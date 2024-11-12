@@ -5,7 +5,7 @@
 %endif
 
 Name:    bluez
-Version: 5.64
+Version: 5.72
 Release: 2%{?dist}
 Summary: Bluetooth utilities
 License: GPLv2+
@@ -16,26 +16,8 @@ Source1: bluez.gitignore
 
 # https://github.com/hadess/bluez/commits/obex-5.46
 Patch1: 0001-obex-Use-GLib-helper-function-to-manipulate-paths.patch
-# https://github.com/hadess/bluez/commits/systemd-hardening
-#Patch10: 0001-build-Always-define-confdir-and-statedir.patch
-#Patch11: 0002-systemd-Add-PrivateTmp-and-NoNewPrivileges-options.patch
-#Patch12: 0003-systemd-Add-more-filesystem-lockdown.patch
-#Patch13: 0004-systemd-More-lockdown.patch
-#Patch14: 0005-media-rename-local-function-conflicting-with-pause-2.patch
-#Patch15: bluez-avdtp-fix-removing-all-seps-when-loading-from-cache.patch
-Patch2: 0001-client-gatt-Fix-memory-leak-issues.patch
-Patch3: 0002-mesh-appkey-Fix-memory-leaks.patch
-Patch4: 0003-monitor-Fix-memory-leaks.patch
-Patch5: 0004-sixaxis-Fix-memory-leaks.patch
-Patch6: 0005-cltest-Fix-leaked_handle.patch
-Patch7: 0006-create-image-Fix-leaked_handle.patch
-Patch8: 0007-l2cap-tester-Fix-leaked_handle.patch
-Patch9: 0008-mesh-mesh-db-Fix-resource-leaks.patch
-Patch10: 0009-obex-client-Fix-leaked_handle.patch
-Patch11: 0010-pbap-Fix-memory-leak.patch
-Patch12: 0011-meshctl-Fix-possible-use_after_free.patch
-Patch13: 0012-mesh-gatt-Fix-use_after_free.patch
-Patch14: 0001-gatt-Fix-double-free-and-freed-memory-dereference.patch 
+# https://patchwork.kernel.org/project/bluetooth/patch/20240214155019.325715-1-hadess@hadess.net/
+Patch2: 0001-Add-missing-mesh-gatt-JSON-files.patch
 
 BuildRequires: dbus-devel >= 1.6
 BuildRequires: glib2-devel
@@ -53,6 +35,7 @@ BuildRequires: cups-devel
 BuildRequires: libtool automake autoconf
 # For man pages
 BuildRequires: python3-docutils
+BuildRequires: python3-pygments
 
 Requires: dbus >= 1.6
 Requires(post): systemd
@@ -162,9 +145,7 @@ Object Exchange daemon for sharing files, contacts etc over bluetooth
 %build
 autoreconf -vif
 %configure --enable-tools --enable-library --disable-optimization \
-%if %{with deprecated}
            --enable-deprecated \
-%endif
            --enable-sixaxis --enable-cups --enable-nfc --enable-mesh \
            --enable-hid2hci --enable-testing \
            --with-systemdsystemunitdir=%{_unitdir} \
@@ -179,6 +160,10 @@ autoreconf -vif
 # "make install" fails to install gatttool, necessary for Bluetooth Low Energy
 # Red Hat Bugzilla bug #1141909, Debian bug #720486
 install -m0755 attrib/gatttool $RPM_BUILD_ROOT%{_bindir}
+%else
+for i in ciptool gatttool hciattach hciconfig hcidump hcitool rfcomm sdptool ; do \
+	rm -f $RPM_BUILD_ROOT%{_bindir}/$i $RPM_BUILD_ROOT%{_mandir}/man1/$i*.1* ; \
+done
 %endif
 
 # "make install" fails to install avinfo
@@ -249,7 +234,6 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %doc AUTHORS ChangeLog
 %dir %{_sysconfdir}/bluetooth
 %config %{_sysconfdir}/bluetooth/main.conf
-%config %{_sysconfdir}/dbus-1/system.d/bluetooth.conf
 %{_bindir}/avinfo
 %{_bindir}/bluemoon
 %{_bindir}/bluetoothctl
@@ -258,19 +242,20 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_bindir}/btmon
 %{_bindir}/hex2hcd
 %{_bindir}/l2ping
-%{_bindir}/l2test
 %{_bindir}/mpris-proxy
-%{_bindir}/rctest
+%{_mandir}/man1/bluetoothctl.1.*
+%{_mandir}/man1/bluetoothctl-*.1.*
 %{_mandir}/man1/btattach.1.*
+%{_mandir}/man1/btmgmt.1.*
 %{_mandir}/man1/btmon.1.*
 %{_mandir}/man1/l2ping.1.*
-%{_mandir}/man1/rctest.1.*
 %{_mandir}/man8/bluetoothd.8.*
 %dir %{_libexecdir}/bluetooth
 %{_libexecdir}/bluetooth/bluetoothd
 %{_libdir}/bluetooth/
 %{_localstatedir}/lib/bluetooth
 %{_datadir}/dbus-1/system-services/org.bluez.service
+%{_datadir}/dbus-1/system.d/bluetooth.conf
 %{_unitdir}/bluetooth.service
 %{_datadir}/zsh/site-functions/_bluetoothctl
 
@@ -300,8 +285,14 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 
 %files libs-devel
 %doc doc/*txt
+%{_bindir}/isotest
+%{_bindir}/l2test
+%{_bindir}/rctest
 %{_libdir}/libbluetooth.so
 %{_includedir}/bluetooth
+%{_mandir}/man1/isotest.1.*
+%{_mandir}/man1/rctest.1.*
+%{_mandir}/man5/org.bluez.*.5.*
 %{_libdir}/pkgconfig/bluez.pc
 %dir %{_libexecdir}/bluetooth
 %{_libexecdir}/bluetooth/btvirt
@@ -317,11 +308,11 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %files mesh
 %doc tools/mesh-gatt/*.json
 %config %{_sysconfdir}/bluetooth/mesh-main.conf
-%config %{_sysconfdir}/dbus-1/system.d/bluetooth-mesh.conf
 %{_bindir}/meshctl
 %{_bindir}/mesh-cfgclient
 %{_bindir}/mesh-cfgtest
 %{_datadir}/dbus-1/system-services/org.bluez.mesh.service
+%{_datadir}/dbus-1/system.d/bluetooth-mesh.conf
 %{_libexecdir}/bluetooth/bluetooth-meshd
 %{_unitdir}/bluetooth-mesh.service
 %{_localstatedir}/lib/bluetooth/mesh
@@ -333,13 +324,19 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_userunitdir}/obex.service
 
 %changelog
+* Mon Jul 15 2024 David Marlin <dmarlin@redhat.com> - 5.72-2
+- Bump release to rebuild for RHEL-9.5
+
+* Thu Feb 15 2024 Bastien Nocera <bnocera@redhat.com> - 5.72-1
+- Update to 5.72
+
 * Thu Jun 9 2022 Gopal Tiwari <gtiwari@redhat.com> - 5.64-2
 - Coverity fixes for bluez.
 
 * Thu May 5 2022 Gopal Tiwari <gtiwari@redhat.com> - 5.64-1
 - Update to 5.64
 
-* Fri Dec 16 2021 Gopal Tiwari <gtiwari@redhat.com> - 5.56-8
+* Thu Dec 16 2021 Gopal Tiwari <gtiwari@redhat.com> - 5.56-8
 - Fixing Gating and version
   Related: rhbz#2027435
 
