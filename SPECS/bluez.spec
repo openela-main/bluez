@@ -1,7 +1,7 @@
 Name:    bluez
 Summary: Bluetooth utilities
 Version: 5.63
-Release: 1%{?dist}
+Release: 3%{?dist}
 License: GPLv2+
 URL:     http://www.bluez.org/
 
@@ -48,6 +48,8 @@ Patch25: 0001-gdbus-Emit-InterfacesAdded-of-parents-objects-first.patch
 #Patch31: 0001-shared-gatt-server-Fix-not-properly-checking-for-sec.patch
 
 #Patch32: 0001-sdpd-Fix-leaking-buffers-stored-in-cstates-cache.patch
+
+Patch40: 0001-Change-default-of-ClassicBondedOnly.patch
 
 BuildRequires: git-core
 BuildRequires: dbus-devel >= 1.6
@@ -283,6 +285,16 @@ make check
 %{_userunitdir}/obex.service
 
 %changelog
+* Thu Jun 06 2024 David Marlin <dmarlin@redhat.com> - 5.63-3
++ bluez-5.63-3
+- Add back the tests for OSCI.
+
+* Wed May 29 2024 David Marlin <dmarlin@redhat.com> - 5.63-2
++ bluez-5.63-2
+- Change default of ClassicBondedOnly to true to align with HID specification.
+- Resolves: RHEL-18429
+- Fixing CVE-2021-41229
+
 * Tue May 17 2022 Gopal Tiwari <gtiwari@redhat.com> - 5.63-1
 + bluez-5.63-1
 - Fixing (#)

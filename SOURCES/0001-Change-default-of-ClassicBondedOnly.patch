@@ -1,0 +1,54 @@
+From: David Marlin <dmarlin@redhat.com>
+
+Subject: input.conf: Change default of ClassicBondedOnly
+
+Resolves: RHEL-18429
+
+CVE: CVE-2023-45866
+
+commit 25a471a83e02e1effb15d5a488b3f0085eaeb675
+Author: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date:   Tue Oct 10 13:03:12 2023 -0700
+
+    input.conf: Change default of ClassicBondedOnly
+    
+    This changes the default of ClassicBondedOnly since defaulting to false
+    is not inline with HID specification which mandates the of Security Mode
+    4:
+    
+    BLUETOOTH SPECIFICATION Page 84 of 123
+    Human Interface Device (HID) Profile:
+    
+      5.4.3.4.2 Security Modes
+      Bluetooth HID Hosts shall use Security Mode 4 when interoperating with
+      Bluetooth HID devices that are compliant to the Bluetooth Core
+      Specification v2.1+EDR[6].
+
+Signed-off-by: David Marlin <dmarlin@redhat.com>
+
+diff --git a/profiles/input/device.c b/profiles/input/device.c
+index 4a50ea9921a97751a94547c0e73177d58184a75d..4310dd192e113f9875c07117d523167655cef954 100644
+--- a/profiles/input/device.c
++++ b/profiles/input/device.c
+@@ -81,7 +81,7 @@ struct input_device {
+ 
+ static int idle_timeout = 0;
+ static bool uhid_enabled = false;
+-static bool classic_bonded_only = false;
++static bool classic_bonded_only = true;
+ 
+ void input_set_idle_timeout(int timeout)
+ {
+diff --git a/profiles/input/input.conf b/profiles/input/input.conf
+index 4c70bc561f05429442c6fe0a183584ad1536fa4b..d8645f3dd664e2d671791878462f8a0dc74e04a5 100644
+--- a/profiles/input/input.conf
++++ b/profiles/input/input.conf
+@@ -17,7 +17,7 @@
+ # platforms may want to make sure that input connections only come from bonded
+ # device connections. Several older mice have been known for not supporting
+ # pairing/encryption.
+-# Defaults to false to maximize device compatibility.
++# Defaults to true for security.
+ #ClassicBondedOnly=true
+ 
+ # LE upgrade security
