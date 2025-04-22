@@ -1,7 +1,7 @@
 Name:    bluez
 Summary: Bluetooth utilities
 Version: 5.63
-Release: 3%{?dist}
+Release: 5%{?dist}
 License: GPLv2+
 URL:     http://www.bluez.org/
 
@@ -50,6 +50,9 @@ Patch25: 0001-gdbus-Emit-InterfacesAdded-of-parents-objects-first.patch
 #Patch32: 0001-sdpd-Fix-leaking-buffers-stored-in-cstates-cache.patch
 
 Patch40: 0001-Change-default-of-ClassicBondedOnly.patch
+
+Patch50: 0001-pbap-Fix-not-checking-Primary_Secundary-Counter-lengt.patch
+Patch51: 0001-avrcp-Fix-crash-while-handling-unsupported-events.patch
 
 BuildRequires: git-core
 BuildRequires: dbus-devel >= 1.6
@@ -285,6 +288,20 @@ make check
 %{_userunitdir}/obex.service
 
 %changelog
+* Mon Dec 09 2024 David Marlin <dmarlin@redhat.com> - 5.63-5
++ bluez-5.63-5
+- Resolves: RHEL-35371
+- Fixing CVE-2023-27349
+- Resolves: RHEL-35492
+- Fixing CVE-2023-51589
+
+* Mon Aug 05 2024 David Marlin <dmarlin@redhat.com> - 5.63-4
++ bluez-5.63-4
+- Resolves: RHEL-35501
+- Fixing CVE-2023-50230
+- Resolves: RHEL-35504
+- Fixing CVE-2023-50229
+
 * Thu Jun 06 2024 David Marlin <dmarlin@redhat.com> - 5.63-3
 + bluez-5.63-3
 - Add back the tests for OSCI.
