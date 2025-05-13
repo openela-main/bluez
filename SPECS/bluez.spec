@@ -6,7 +6,7 @@
 
 Name:    bluez
 Version: 5.72
-Release: 2%{?dist}
+Release: 4%{?dist}
 Summary: Bluetooth utilities
 License: GPLv2+
 URL:     http://www.bluez.org/
@@ -18,6 +18,9 @@ Source1: bluez.gitignore
 Patch1: 0001-obex-Use-GLib-helper-function-to-manipulate-paths.patch
 # https://patchwork.kernel.org/project/bluetooth/patch/20240214155019.325715-1-hadess@hadess.net/
 Patch2: 0001-Add-missing-mesh-gatt-JSON-files.patch
+# https://git.kernel.org/pub/scm/bluetooth/bluez.git/commit/?id=fdcde2ce2112df852ab3df6e49b158621177f946
+# https://git.kernel.org/pub/scm/bluetooth/bluez.git/commit/?id=252883241228f3149566f119336ce2c49a8d861e
+Patch3: plugin_init-startup-warnings.patch
 
 BuildRequires: dbus-devel >= 1.6
 BuildRequires: glib2-devel
@@ -232,7 +235,9 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %files
 %license COPYING
 %doc AUTHORS ChangeLog
-%dir %{_sysconfdir}/bluetooth
+# bluetooth.service expects configuration directory to be read only
+# https://github.com/bluez/bluez/issues/329#issuecomment-1102459104
+%attr(0555, root, root) %dir %{_sysconfdir}/bluetooth
 %config %{_sysconfdir}/bluetooth/main.conf
 %{_bindir}/avinfo
 %{_bindir}/bluemoon
@@ -324,6 +329,14 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_userunitdir}/obex.service
 
 %changelog
+* Fri Jan 24 2025 Bastien Nocera <bnocera@redhat.com> - 5.72-4
+- Fix plugin_init() startup warnings
+  Related: RHEL-68934
+
+* Wed Jan 22 2025 Bastien Nocera <bnocera@redhat.com> - 5.72-3
+- Fix ConfigurationDirectory startup warning
+  Related: RHEL-71798
+
 * Mon Jul 15 2024 David Marlin <dmarlin@redhat.com> - 5.72-2
 - Bump release to rebuild for RHEL-9.5
 
