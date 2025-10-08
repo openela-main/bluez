@@ -1,0 +1,3923 @@
+From f00d5546c9e989dd68ce0de0190cd0e043b0f1f5 Mon Sep 17 00:00:00 2001
+From: Arjan Opmeer <arjan.opmeer@gmail.com>
+Date: Tue, 9 Jul 2024 13:55:41 +0200
+Subject: [PATCH 01/46] tools/btmgmt: Fix --index option for non-interactive
+ mode
+
+In non-interactive mode the --index option does not work because the
+call to mgmt_set_index() is made after bt_shell_attach().
+
+Fixes: https://github.com/bluez/bluez/issues/893
+---
+ tools/btmgmt.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/btmgmt.c b/tools/btmgmt.c
+index 9b7f851bd8c6..436c2bb21f10 100644
+--- a/tools/btmgmt.c
++++ b/tools/btmgmt.c
+@@ -51,8 +51,8 @@ int main(int argc, char *argv[])
+ 		return EXIT_FAILURE;
+ 	}
+ 
+-	bt_shell_attach(fileno(stdin));
+ 	mgmt_set_index(index_option);
++	bt_shell_attach(fileno(stdin));
+ 	status = bt_shell_run();
+ 
+ 	mgmt_remove_submenu();
+-- 
+2.45.2
+
+
+From 66a76c268d05583c2396054e3f63a19c6f18bb9c Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Wed, 3 Jul 2024 17:58:39 +0300
+Subject: [PATCH 02/46] doc: Add initial MediaAssistant rst
+
+This adds initial documentation for the MediaAssistant D-Bus API, to
+be used by a Broadcast Assistant application to interract with the
+BlueZ implementation (BASS Client).
+---
+ Makefile.am                      |  6 +--
+ doc/org.bluez.MediaAssistant.rst | 74 ++++++++++++++++++++++++++++++++
+ 2 files changed, 77 insertions(+), 3 deletions(-)
+ create mode 100644 doc/org.bluez.MediaAssistant.rst
+
+diff --git a/Makefile.am b/Makefile.am
+index 0ae72111179b..46a8cfb4966f 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -362,7 +362,7 @@ man_MANS += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
+ man_MANS += doc/org.bluez.Media.5 doc/org.bluez.MediaControl.5 \
+ 		doc/org.bluez.MediaPlayer.5 doc/org.bluez.MediaFolder.5 \
+ 		doc/org.bluez.MediaItem.5 doc/org.bluez.MediaEndpoint.5 \
+-		doc/org.bluez.MediaTransport.5
++		doc/org.bluez.MediaTransport.5 doc/org.bluez.MediaAssistant.5
+ man_MANS += doc/org.bluez.GattManager.5 doc/org.bluez.GattProfile.5 \
+ 		doc/org.bluez.GattService.5 \
+ 		doc/org.bluez.GattCharacteristic.5 \
+@@ -395,7 +395,7 @@ manual_pages += doc/org.bluez.Adapter.5 doc/org.bluez.Device.5 \
+ manual_pages += doc/org.bluez.Media.5 doc/org.bluez.MediaControl.5 \
+ 		doc/org.bluez.MediaPlayer.5 doc/org.bluez.MediaFolder.5 \
+ 		doc/org.bluez.MediaItem.5 doc/org.bluez.MediaEndpoint.5 \
+-		doc/org.bluez.MediaTransport.5
++		doc/org.bluez.MediaTransport.5 doc/org.bluez.MediaAssistant.5
+ manual_pages += doc/org.bluez.GattManager.5 doc/org.bluez.GattProfile.5 \
+ 		doc/org.bluez.GattService.5 \
+ 		doc/org.bluez.GattCharacteristic.5 \
+@@ -475,7 +475,7 @@ EXTRA_DIST += doc/org.bluez.Adapter.rst doc/org.bluez.Device.rst \
+ EXTRA_DIST += doc/org.bluez.Media.rst doc/org.bluez.MediaControl.rst \
+ 		doc/org.bluez.MediaPlayer.rst doc/org.bluez.MediaFolder.rst \
+ 		doc/org.bluez.MediaItem.rst doc/org.bluez.MediaEndpoint.rst \
+-		doc/org.bluez.MediaTransport.rst
++		doc/org.bluez.MediaTransport.rst doc/org.bluez.MediaAssistant.rst
+ 
+ EXTRA_DIST += doc/org.bluez.GattManager.rst doc/org.bluez.GattProfile.rst\
+ 		doc/org.bluez.GattService.rst \
+diff --git a/doc/org.bluez.MediaAssistant.rst b/doc/org.bluez.MediaAssistant.rst
+new file mode 100644
+index 000000000000..4aac8953619d
+--- /dev/null
++++ b/doc/org.bluez.MediaAssistant.rst
+@@ -0,0 +1,74 @@
++========================
++org.bluez.MediaAssistant
++========================
++
++--------------------------------------------
++BlueZ D-Bus MediaAssistant API documentation
++--------------------------------------------
++
++:Version: BlueZ
++:Date: June 2024
++:Manual section: 5
++:Manual group: Linux System Administration
++
++Interface
++=========
++
++:Service:	org.bluez
++:Interface:	org.bluez.MediaAssistant1
++:Object path:	/org/bluez/{hci0,hci1,...}/src_XX_XX_XX_XX_XX_XX/dev_YY_YY_YY_YY_YY_YY/bisZ
++
++Methods
++-------
++
++void Push(dict properties)
++````````````````````````````````````````````````````````
++
++	Send stream information to the remote device.
++
++	:dict properties:
++
++	Indicate stream properties that will be sent to the peer.
++
++	Values:
++
++		:array{byte} Metadata [ISO only]:
++
++			See Metadata property.
++
++		:dict QoS [ISO only]:
++
++			See QoS property.
++
++Properties
++----------
++
++string State [readonly]
++```````````````````````
++
++	Indicates the state of the assistant object. Possible values are:
++
++	:"idle": assistant object was created for the stream
++	:"pending": assistant object was pushed (stream information was sent to the peer)
++	:"requesting": remote device requires Broadcast_Code
++	:"active": remote device started receiving stream
++
++array{byte} Metadata [readwrite, ISO Only, experimental]
++````````````````````````````````````````````````````````
++
++	Indicates stream Metadata.
++
++dict QoS [readwrite, ISO only, experimental]
++`````````````````````````````````````````````````````
++
++	Indicates stream QoS capabilities.
++
++	Values:
++
++	:byte Encryption:
++
++		Indicates whether the stream is encrypted.
++
++	:array{byte} BCode
++
++		Indicates Broadcast_Code to decrypt stream.
+-- 
+2.45.2
+
+
+From 34aca9a4fbcf3d4da459f97cef4a863d7853f6e4 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Antonio=20V=C3=A1zquez=20Blanco?=
+ <antoniovazquezblanco@gmail.com>
+Date: Thu, 4 Jul 2024 12:11:23 +0200
+Subject: [PATCH 03/46] bdaddr: Add cypress manufacturer support
+
+---
+ tools/bdaddr.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tools/bdaddr.c b/tools/bdaddr.c
+index bc0478d461b2..de17416e9c6c 100644
+--- a/tools/bdaddr.c
++++ b/tools/bdaddr.c
+@@ -303,6 +303,7 @@ static struct {
+ 	{ 48,		st_write_bd_addr,	generic_reset_device	},
+ 	{ 57,		ericsson_write_bd_addr,	generic_reset_device	},
+ 	{ 72,		mrvl_write_bd_addr,	generic_reset_device	},
++	{ 305,		bcm_write_bd_addr,	generic_reset_device	},
+ 	{ 65535,	NULL,			NULL			},
+ };
+ 
+-- 
+2.45.2
+
+
+From 2748c60a2c6b1b090a7507fdd23865a598129d61 Mon Sep 17 00:00:00 2001
+From: Vlad Pruteanu <vlad.pruteanu@nxp.com>
+Date: Tue, 9 Jul 2024 11:59:03 +0300
+Subject: [PATCH 04/46] bap: Wait for BIG Info report event before creating
+ streams
+
+This makes it so that stream for each BIS is created after BIG
+Info report is received. This ensures that when the stream is
+created the encryption field is correctly set.
+---
+ profiles/audio/bap.c | 27 ++++++++++++++++++++++++---
+ 1 file changed, 24 insertions(+), 3 deletions(-)
+
+diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
+index e82a253825f1..afa938091996 100644
+--- a/profiles/audio/bap.c
++++ b/profiles/audio/bap.c
+@@ -134,6 +134,7 @@ struct bap_bcast_pa_req {
+ 		struct btd_service *service;
+ 		struct bap_setup *setup;
+ 	} data;
++	unsigned int io_id;	/* io_id for BIG Info watch */
+ };
+ 
+ static struct queue *sessions;
+@@ -1220,7 +1221,8 @@ fail:
+ 	return ret;
+ }
+ 
+-static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
++static gboolean big_info_report_cb(GIOChannel *io, GIOCondition cond,
++							gpointer user_data)
+ {
+ 	GError *err = NULL;
+ 	struct bap_bcast_pa_req *req = user_data;
+@@ -1228,7 +1230,7 @@ static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
+ 	struct bt_iso_base base;
+ 	struct bt_iso_qos qos;
+ 
+-	DBG("PA Sync done");
++	DBG("BIG Info received");
+ 
+ 	bt_io_get(io, &err,
+ 			BT_IO_OPT_BASE, &base,
+@@ -1238,7 +1240,8 @@ static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
+ 		error("%s", err->message);
+ 		g_error_free(err);
+ 		g_io_channel_shutdown(io, TRUE, NULL);
+-		return;
++		req->io_id = 0;
++		return FALSE;
+ 	}
+ 
+ 	/* Close the io and remove the queue request for another PA Sync */
+@@ -1255,7 +1258,21 @@ static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
+ 	service_set_connecting(req->data.service);
+ 
+ 	queue_remove(data->adapter->bcast_pa_requests, req);
++	req->io_id = 0;
+ 	free(req);
++
++	return FALSE;
++}
++
++static void iso_pa_sync_confirm_cb(GIOChannel *io, void *user_data)
++{
++	struct bap_bcast_pa_req *req = user_data;
++	/* PA Sync was established, wait for BIG Info report so that the
++	 * encryption flag is also available.
++	 */
++	DBG("PA Sync done");
++	req->io_id = g_io_add_watch(io, G_IO_OUT, big_info_report_cb,
++								user_data);
+ }
+ 
+ static bool match_data_bap_data(const void *data, const void *match_data)
+@@ -3177,6 +3194,10 @@ static void bap_bcast_remove(struct btd_service *service)
+ 	 */
+ 	req = queue_remove_if(data->adapter->bcast_pa_requests,
+ 						match_service, service);
++	if (req->io_id) {
++		g_source_remove(req->io_id);
++		req->io_id = 0;
++	}
+ 	free(req);
+ 
+ 	bap_data_remove(data);
+-- 
+2.45.2
+
+
+From aa6063aa66954ac8321211145d1ae6b434b2555c Mon Sep 17 00:00:00 2001
+From: Roman Smirnov <r.smirnov@omp.ru>
+Date: Tue, 9 Jul 2024 17:35:00 +0300
+Subject: [PATCH 05/46] health: mcap: add checks for NULL mcap_notify_error()
+
+It is necessary to prevent dereferencing of NULL pointers.
+
+Found with the SVACE static analysis tool.
+---
+ profiles/health/mcap.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/profiles/health/mcap.c b/profiles/health/mcap.c
+index 7eceaa88a3a9..2e4214a6984f 100644
+--- a/profiles/health/mcap.c
++++ b/profiles/health/mcap.c
+@@ -336,6 +336,9 @@ static void mcap_notify_error(struct mcap_mcl *mcl, GError *err)
+ 	case MCAP_MD_CREATE_MDL_REQ:
+ 		st = MDL_WAITING;
+ 		l = g_slist_find_custom(mcl->mdls, &st, cmp_mdl_state);
++		if (!l)
++			return;
++
+ 		mdl = l->data;
+ 		mcl->mdls = g_slist_remove(mcl->mdls, mdl);
+ 		mcap_mdl_unref(mdl);
+@@ -345,6 +348,9 @@ static void mcap_notify_error(struct mcap_mcl *mcl, GError *err)
+ 	case MCAP_MD_ABORT_MDL_REQ:
+ 		st = MDL_WAITING;
+ 		l = g_slist_find_custom(mcl->mdls, &st, cmp_mdl_state);
++		if (!l)
++			return;
++
+ 		shutdown_mdl(l->data);
+ 		update_mcl_state(mcl);
+ 		con->cb.notify(err, con->user_data);
+@@ -362,6 +368,9 @@ static void mcap_notify_error(struct mcap_mcl *mcl, GError *err)
+ 	case MCAP_MD_RECONNECT_MDL_REQ:
+ 		st = MDL_WAITING;
+ 		l = g_slist_find_custom(mcl->mdls, &st, cmp_mdl_state);
++		if (!l)
++			return;
++
+ 		shutdown_mdl(l->data);
+ 		update_mcl_state(mcl);
+ 		con->cb.op(NULL, err, con->user_data);
+-- 
+2.45.2
+
+
+From 11dcc9bf0dba61c83269fb3cf234579d6f9ef192 Mon Sep 17 00:00:00 2001
+From: Roman Smirnov <r.smirnov@omp.ru>
+Date: Tue, 9 Jul 2024 17:35:01 +0300
+Subject: [PATCH 06/46] shared: prevent dereferencing of NULL pointers
+
+It is necessary to add checks for NULL before dereferencing pointers.
+
+Found with the SVACE static analysis tool.
+---
+ src/shared/micp.c |  4 ++++
+ src/shared/vcp.c  | 12 ++++++++++++
+ 2 files changed, 16 insertions(+)
+
+diff --git a/src/shared/micp.c b/src/shared/micp.c
+index b82bd92dedb8..1c34e9d0079f 100644
+--- a/src/shared/micp.c
++++ b/src/shared/micp.c
+@@ -398,6 +398,10 @@ static void mics_mute_write(struct gatt_db_attribute *attrib,
+ 	}
+ 
+ 	micp_op = iov_pull_mem(&iov, sizeof(*micp_op));
++	if (!micp_op) {
++		DBG(micp, "iov_pull_mem() returned NULL");
++		goto respond;
++	}
+ 
+ 	if ((*micp_op == MICS_DISABLED) || (*micp_op != MICS_NOT_MUTED
+ 		&& *micp_op != MICS_MUTED)) {
+diff --git a/src/shared/vcp.c b/src/shared/vcp.c
+index 06264a24146c..602d46dc1d1d 100644
+--- a/src/shared/vcp.c
++++ b/src/shared/vcp.c
+@@ -925,6 +925,10 @@ static void vcs_cp_write(struct gatt_db_attribute *attrib,
+ 	}
+ 
+ 	vcp_op = iov_pull_mem(&iov, sizeof(*vcp_op));
++	if (!vcp_op) {
++		DBG(vcp, "iov_pull_mem() returned NULL");
++		goto respond;
++	}
+ 
+ 	for (handler = vcp_handlers; handler && handler->str; handler++) {
+ 		if (handler->op != *vcp_op)
+@@ -985,6 +989,10 @@ static void vocs_cp_write(struct gatt_db_attribute *attrib,
+ 	}
+ 
+ 	vcp_op = iov_pull_mem(&iov, sizeof(*vcp_op));
++	if (!vcp_op) {
++		DBG(vcp, "iov_pull_mem() returned NULL");
++		goto respond;
++	}
+ 
+ 	for (handler = vocp_handlers; handler && handler->str; handler++) {
+ 		if (handler->op != *vcp_op)
+@@ -1517,6 +1525,10 @@ static void aics_ip_cp_write(struct gatt_db_attribute *attrib,
+ 	}
+ 
+ 	aics_op = iov_pull_mem(&iov, sizeof(*aics_op));
++	if (!aics_op) {
++		DBG(vcp, "iov_pull_mem() returned NULL");
++		goto respond;
++	}
+ 
+ 	for (handler = aics_handlers; handler && handler->str; handler++) {
+ 		if (handler->op != *aics_op)
+-- 
+2.45.2
+
+
+From 755091581336dd6b6a710e599da9e1e52037851a Mon Sep 17 00:00:00 2001
+From: Roman Smirnov <r.smirnov@omp.ru>
+Date: Tue, 9 Jul 2024 17:35:02 +0300
+Subject: [PATCH 07/46] settings: limit string size in load_service()
+
+It is necessary to prevent buffer overflow by limiting
+the maximum string length.
+
+Found with the SVACE static analysis tool.
+---
+ src/settings.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/settings.c b/src/settings.c
+index b61e694f1b85..643a083dbc84 100644
+--- a/src/settings.c
++++ b/src/settings.c
+@@ -193,7 +193,7 @@ static int load_service(struct gatt_db *db, char *handle, char *value)
+ 		return -EIO;
+ 	}
+ 
+-	if (sscanf(value, "%[^:]:%04hx:%36s", type, &end, uuid_str) != 3) {
++	if (sscanf(value, "%36[^:]:%04hx:%36s", type, &end, uuid_str) != 3) {
+ 		DBG("Failed to parse value: %s", value);
+ 		return -EIO;
+ 	}
+-- 
+2.45.2
+
+
+From 4ca662fcea1604e937bde1bddd5de2c50bcb6e00 Mon Sep 17 00:00:00 2001
+From: Roman Smirnov <r.smirnov@omp.ru>
+Date: Tue, 9 Jul 2024 17:35:03 +0300
+Subject: [PATCH 08/46] settings: limit string size in gatt_db_load()
+
+It is necessary to prevent buffer overflow by limiting
+the maximum string length.
+
+Found with the SVACE static analysis tool.
+---
+ src/settings.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/settings.c b/src/settings.c
+index 643a083dbc84..37164939573f 100644
+--- a/src/settings.c
++++ b/src/settings.c
+@@ -232,7 +232,7 @@ static int gatt_db_load(struct gatt_db *db, GKeyFile *key_file, char **keys)
+ 		value = g_key_file_get_string(key_file, "Attributes", *handle,
+ 									NULL);
+ 
+-		if (!value || sscanf(value, "%[^:]:", type) != 1) {
++		if (!value || sscanf(value, "%36[^:]:", type) != 1) {
+ 			g_free(value);
+ 			return -EIO;
+ 		}
+@@ -255,7 +255,7 @@ static int gatt_db_load(struct gatt_db *db, GKeyFile *key_file, char **keys)
+ 		value = g_key_file_get_string(key_file, "Attributes", *handle,
+ 									NULL);
+ 
+-		if (!value || sscanf(value, "%[^:]:", type) != 1) {
++		if (!value || sscanf(value, "%36[^:]:", type) != 1) {
+ 			g_free(value);
+ 			return -EIO;
+ 		}
+-- 
+2.45.2
+
+
+From e56fc72fc66765f407473e4cb903fdc80784a4ff Mon Sep 17 00:00:00 2001
+From: Roman Smirnov <r.smirnov@omp.ru>
+Date: Wed, 10 Jul 2024 14:31:44 +0300
+Subject: [PATCH 09/46] gatt: add return value check of io_get_fd() to
+ sock_io_send()
+
+It is necessary to add a return value check.
+
+Found with the SVACE static analysis tool.
+---
+ src/gatt-database.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/gatt-database.c b/src/gatt-database.c
+index 8472aac5941d..6c84b085ca29 100644
+--- a/src/gatt-database.c
++++ b/src/gatt-database.c
+@@ -2630,6 +2630,7 @@ static int sock_io_send(struct io *io, const void *data, size_t len)
+ {
+ 	struct msghdr msg;
+ 	struct iovec iov;
++	int fd;
+ 
+ 	iov.iov_base = (void *) data;
+ 	iov.iov_len = len;
+@@ -2638,7 +2639,13 @@ static int sock_io_send(struct io *io, const void *data, size_t len)
+ 	msg.msg_iov = &iov;
+ 	msg.msg_iovlen = 1;
+ 
+-	return sendmsg(io_get_fd(io), &msg, MSG_NOSIGNAL);
++	fd = io_get_fd(io);
++	if (fd < 0) {
++		error("io_get_fd() returned %d\n", fd);
++		return fd;
++	}
++
++	return sendmsg(fd, &msg, MSG_NOSIGNAL);
+ }
+ 
+ static void att_disconnect_cb(int err, void *user_data)
+-- 
+2.45.2
+
+
+From ba70a116d97108f21a853f5549758a720fdbefb3 Mon Sep 17 00:00:00 2001
+From: Roman Smirnov <r.smirnov@omp.ru>
+Date: Wed, 10 Jul 2024 14:31:45 +0300
+Subject: [PATCH 10/46] shared/vcp: add NULL checks to foreach_aics_service()
+
+Make foreach_aics_service() safe for passing NULL pointers.
+
+Found with the SVACE static analysis tool.
+---
+ src/shared/vcp.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/shared/vcp.c b/src/shared/vcp.c
+index 602d46dc1d1d..43ef1d18644d 100644
+--- a/src/shared/vcp.c
++++ b/src/shared/vcp.c
+@@ -2729,6 +2729,9 @@ static void foreach_aics_service(struct gatt_db_attribute *attr,
+ 	struct bt_vcp *vcp = user_data;
+ 	struct bt_aics *aics = vcp_get_aics(vcp);
+ 
++	if (!aics || !attr)
++		return;
++
+ 	aics->service = attr;
+ 
+ 	gatt_db_service_set_claimed(attr, true);
+-- 
+2.45.2
+
+
+From 12525371ef082483d524447310da7d0f5866bf91 Mon Sep 17 00:00:00 2001
+From: Roman Smirnov <r.smirnov@omp.ru>
+Date: Wed, 10 Jul 2024 14:31:46 +0300
+Subject: [PATCH 11/46] client/player: add error code handling to
+ transport_recv()
+
+It is necessary to add return value check as in sock_send().
+
+Found with the SVACE static analysis tool.
+---
+ client/player.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/client/player.c b/client/player.c
+index 584fc5e8148a..de4491b534c2 100644
+--- a/client/player.c
++++ b/client/player.c
+@@ -4514,7 +4514,13 @@ static bool transport_recv(struct io *io, void *user_data)
+ 	uint8_t buf[1024];
+ 	int ret, len;
+ 
+-	ret = read(io_get_fd(io), buf, sizeof(buf));
++	ret = io_get_fd(io);
++	if (ret < 0) {
++		bt_shell_printf("io_get_fd() returned %d\n", ret);
++		return true;
++	}
++
++	ret = read(ret, buf, sizeof(buf));
+ 	if (ret < 0) {
+ 		bt_shell_printf("Failed to read: %s (%d)\n", strerror(errno),
+ 								-errno);
+-- 
+2.45.2
+
+
+From 7ffc08dd78d68eff15bb77e43efbc1b606fb4fd8 Mon Sep 17 00:00:00 2001
+From: Roman Smirnov <r.smirnov@omp.ru>
+Date: Wed, 10 Jul 2024 14:31:47 +0300
+Subject: [PATCH 12/46] shared/vcp: prevent dereferencing of NULL pointers
+
+util_memdup() will terminate the program if memory
+allocation fails.
+
+Found with the SVACE static analysis tool.
+---
+ src/shared/vcp.c | 20 ++++----------------
+ 1 file changed, 4 insertions(+), 16 deletions(-)
+
+diff --git a/src/shared/vcp.c b/src/shared/vcp.c
+index 43ef1d18644d..cfc426624875 100644
+--- a/src/shared/vcp.c
++++ b/src/shared/vcp.c
+@@ -2139,14 +2139,8 @@ static void read_vocs_audio_descriptor(struct bt_vcp *vcp, bool success,
+ 		return;
+ 	}
+ 
+-	vocs_ao_dec_r = malloc(length+1);
+-	memset(vocs_ao_dec_r, 0, length+1);
+-	memcpy(vocs_ao_dec_r, value, length);
+-
+-	if (!vocs_ao_dec_r) {
+-		DBG(vcp, "Unable to get VOCS Audio Descriptor");
+-		return;
+-	}
++	vocs_ao_dec_r = util_memdup(value, length + 1);
++	memset(vocs_ao_dec_r + length, 0, 1);
+ 
+ 	DBG(vcp, "VOCS Audio Descriptor: %s", vocs_ao_dec_r);
+ 	free(vocs_ao_dec_r);
+@@ -2543,14 +2537,8 @@ static void read_aics_audio_ip_description(struct bt_vcp *vcp, bool success,
+ 		return;
+ 	}
+ 
+-	ip_descrptn = malloc(length+1);
+-	memset(ip_descrptn, 0, length+1);
+-	memcpy(ip_descrptn, value, length);
+-
+-	if (!ip_descrptn) {
+-		DBG(vcp, "Unable to get Audio Input Description");
+-		return;
+-	}
++	ip_descrptn = util_memdup(value, length + 1);
++	memset(ip_descrptn + length, 0, 1);
+ 
+ 	DBG(vcp, "Audio Input Description: %s", ip_descrptn);
+ 	free(ip_descrptn);
+-- 
+2.45.2
+
+
+From cf3d80a01f1f21538148cb9a5569b678dad0848b Mon Sep 17 00:00:00 2001
+From: Roman Smirnov <r.smirnov@omp.ru>
+Date: Wed, 10 Jul 2024 14:31:48 +0300
+Subject: [PATCH 13/46] client/player: fix the order of args in
+ cmd_register_endpoint()
+
+Based on the function prototype, ep->cid and ep->vid should be swapped.
+
+Found with the SVACE static analysis tool.
+---
+ client/player.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/client/player.c b/client/player.c
+index de4491b534c2..2480ed64b8e5 100644
+--- a/client/player.c
++++ b/client/player.c
+@@ -3388,7 +3388,7 @@ static void cmd_register_endpoint(int argc, char *argv[])
+ 
+ 	if (strrchr(argv[2], ':')) {
+ 		ep->codec = 0xff;
+-		parse_vendor_codec(argv[2], &ep->cid, &ep->vid);
++		parse_vendor_codec(argv[2], &ep->vid, &ep->cid);
+ 		ep->preset = new0(struct preset, 1);
+ 		ep->preset->custom.name = strdup("custom");
+ 		ep->preset->default_preset = &ep->preset->custom;
+-- 
+2.45.2
+
+
+From 7a45038dc1e505afbaa49f8dd64fd41dab627f23 Mon Sep 17 00:00:00 2001
+From: Roman Smirnov <r.smirnov@omp.ru>
+Date: Wed, 10 Jul 2024 14:31:49 +0300
+Subject: [PATCH 14/46] shared/gatt-client: add NULL check to
+ discover_secondary_cb()
+
+It is necessary to prevent dereferencing of a NULL pointer.
+
+Found with the SVACE static analysis tool.
+---
+ src/shared/gatt-client.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/shared/gatt-client.c b/src/shared/gatt-client.c
+index b48d739fc609..9db3f52117ff 100644
+--- a/src/shared/gatt-client.c
++++ b/src/shared/gatt-client.c
+@@ -1276,7 +1276,9 @@ next:
+ 
+ 	range = queue_peek_head(op->discov_ranges);
+ 
+-	client->discovery_req = bt_gatt_discover_included_services(client->att,
++	if (range)
++		client->discovery_req = bt_gatt_discover_included_services(
++							client->att,
+ 							range->start,
+ 							range->end,
+ 							discover_incl_cb,
+-- 
+2.45.2
+
+
+From 9cc587947b6ac56a4c94dcc880b273bc72af22a8 Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Thu, 11 Jul 2024 15:11:56 -0400
+Subject: [PATCH 15/46] device: Fix overwritting current_flags
+
+MGMT Set Device Flags overwrites the current_flags so only the last
+flags set this way would remain active which can be seem in the
+following sequence when LL Privacy is enabled:
+
+@ MGMT Command: Set Device Flags (0x0050) plen 11
+        LE Address: CF:AC:A6:79:3D:B9 (Static)
+        Current Flags: 0x00000001
+          Remote Wakeup
+@ MGMT Event: Command Complete (0x0001) plen 10
+      Set Device Flags (0x0050) plen 7
+        Status: Success (0x00)
+        LE Address: CF:AC:A6:79:3D:B9 (Static)
+@ MGMT Command: Set Device Flags (0x0050) plen 11
+        LE Address: CF:AC:A6:79:3D:B9 (Static)
+        Current Flags: 0x00000002
+          Device Privacy Mode
+@ MGMT Event: Command Complete (0x0001) plen 10
+      Set Device Flags (0x0050) plen 7
+        Status: Success (0x00)
+        LE Address: CF:AC:A6:79:3D:B9 (Static)
+
+In order to do this properly the code needs to track the pending_flags
+being set and also call btd_device_flags_changed whenever a change is
+complete since that event is not generated when MGMT_OP_SET_DEVICE_FLAGS
+is sent by bluetoothd itself.
+---
+ src/adapter.c | 20 +++++++++++++++++---
+ src/device.c  | 20 +++++++++++++++++++-
+ src/device.h  |  2 ++
+ 3 files changed, 38 insertions(+), 4 deletions(-)
+
+diff --git a/src/adapter.c b/src/adapter.c
+index bb49a1ecad23..85ddfc16568f 100644
+--- a/src/adapter.c
++++ b/src/adapter.c
+@@ -5569,6 +5569,7 @@ void adapter_accept_list_remove(struct btd_adapter *adapter,
+ static void set_device_privacy_complete(uint8_t status, uint16_t length,
+ 					 const void *param, void *user_data)
+ {
++	struct btd_device *dev = user_data;
+ 	const struct mgmt_rp_set_device_flags *rp = param;
+ 
+ 	if (status != MGMT_STATUS_SUCCESS) {
+@@ -5581,6 +5582,9 @@ static void set_device_privacy_complete(uint8_t status, uint16_t length,
+ 		error("Too small Set Device Flags complete event: %d", length);
+ 		return;
+ 	}
++
++	btd_device_flags_changed(dev, btd_device_get_supported_flags(dev),
++					btd_device_get_pending_flags(dev));
+ }
+ 
+ static void add_device_complete(uint8_t status, uint16_t length,
+@@ -5626,7 +5630,7 @@ static void add_device_complete(uint8_t status, uint16_t length,
+ 			adapter_set_device_flags(adapter, dev, flags |
+ 						DEVICE_FLAG_DEVICE_PRIVACY,
+ 						set_device_privacy_complete,
+-						NULL);
++						dev);
+ 		}
+ 	}
+ }
+@@ -5676,6 +5680,7 @@ void adapter_set_device_flags(struct btd_adapter *adapter,
+ {
+ 	struct mgmt_cp_set_device_flags cp;
+ 	uint32_t supported = btd_device_get_supported_flags(device);
++	uint32_t pending = btd_device_get_pending_flags(device);
+ 	const bdaddr_t *bdaddr;
+ 	uint8_t bdaddr_type;
+ 
+@@ -5683,6 +5688,14 @@ void adapter_set_device_flags(struct btd_adapter *adapter,
+ 				(supported | flags) != supported)
+ 		return;
+ 
++	/* Check if changing flags are pending */
++	if (flags == (flags & pending))
++		return;
++
++	/* Set Device Privacy Mode if it has not set the flag yet. */
++	if (btd_opts.device_privacy && !(flags & DEVICE_FLAG_DEVICE_PRIVACY))
++		flags |= DEVICE_FLAG_DEVICE_PRIVACY & supported & ~pending;
++
+ 	bdaddr = device_get_address(device);
+ 	bdaddr_type = btd_device_get_bdaddr_type(device);
+ 
+@@ -5691,8 +5704,9 @@ void adapter_set_device_flags(struct btd_adapter *adapter,
+ 	cp.addr.type = bdaddr_type;
+ 	cp.current_flags = cpu_to_le32(flags);
+ 
+-	mgmt_send(adapter->mgmt, MGMT_OP_SET_DEVICE_FLAGS, adapter->dev_id,
+-		  sizeof(cp), &cp, func, user_data, NULL);
++	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_DEVICE_FLAGS, adapter->dev_id,
++		  sizeof(cp), &cp, func, user_data, NULL))
++		btd_device_set_pending_flags(device, flags);
+ }
+ 
+ static void device_flags_changed_callback(uint16_t index, uint16_t length,
+diff --git a/src/device.c b/src/device.c
+index 097b1fbba37d..a1dc0750ca41 100644
+--- a/src/device.c
++++ b/src/device.c
+@@ -214,6 +214,7 @@ struct btd_device {
+ 	GDBusPendingPropertySet wake_id;
+ 
+ 	uint32_t	supported_flags;
++	uint32_t	pending_flags;
+ 	uint32_t	current_flags;
+ 	GSList		*svc_callbacks;
+ 	GSList		*eir_uuids;
+@@ -1569,7 +1570,7 @@ static void set_wake_allowed_complete(uint8_t status, uint16_t length,
+ 		return;
+ 	}
+ 
+-	device_set_wake_allowed_complete(dev);
++	btd_device_flags_changed(dev, dev->supported_flags, dev->pending_flags);
+ }
+ 
+ void device_set_wake_allowed(struct btd_device *device, bool wake_allowed,
+@@ -7243,6 +7244,22 @@ uint32_t btd_device_get_supported_flags(struct btd_device *dev)
+ 	return dev->supported_flags;
+ }
+ 
++void btd_device_set_pending_flags(struct btd_device *dev, uint32_t flags)
++{
++	if (!dev)
++		return;
++
++	dev->pending_flags = flags;
++}
++
++uint32_t btd_device_get_pending_flags(struct btd_device *dev)
++{
++	if (!dev)
++		return 0;
++
++	return dev->pending_flags;
++}
++
+ /* This event is sent immediately after add device on all mgmt sockets.
+  * Afterwards, it is only sent to mgmt sockets other than the one which called
+  * set_device_flags.
+@@ -7255,6 +7272,7 @@ void btd_device_flags_changed(struct btd_device *dev, uint32_t supported_flags,
+ 
+ 	dev->supported_flags = supported_flags;
+ 	dev->current_flags = current_flags;
++	dev->pending_flags = 0;
+ 
+ 	if (!changed_flags)
+ 		return;
+diff --git a/src/device.h b/src/device.h
+index 0794f92d0178..3742f6028040 100644
+--- a/src/device.h
++++ b/src/device.h
+@@ -191,6 +191,8 @@ int btd_device_connect_services(struct btd_device *dev, GSList *services);
+ 
+ uint32_t btd_device_get_current_flags(struct btd_device *dev);
+ uint32_t btd_device_get_supported_flags(struct btd_device *dev);
++uint32_t btd_device_get_pending_flags(struct btd_device *dev);
++void btd_device_set_pending_flags(struct btd_device *dev, uint32_t flags);
+ void btd_device_flags_changed(struct btd_device *dev, uint32_t supported_flags,
+ 			      uint32_t current_flags);
+ 
+-- 
+2.45.2
+
+
+From 73266377b0185c56c921b8cece257df428612d73 Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Fri, 12 Jul 2024 15:27:12 -0400
+Subject: [PATCH 16/46] shared/bap: Fix ASE notification order
+
+When processing a CP operation the CP shall be notified ahead of
+the ASE itself:
+
+  'If the server successfully completes a client-initiated ASE Control
+  operation for an ASE, the server shall send a notification of the ASE
+  Control Point characteristic value formatted as defined in Table 4.7.
+  The server shall then perform the behavior defined in Section 5.1
+  through Section 5.8 for that ASE Control operation and send
+  notifications of any ASE characteristic values written during that
+  ASE Control operation.'
+
+So this delays the processing of notifications of ASE states so the CP
+responses always appears first in the notification e.g:
+
+> ACL Data RX: Handle 42 flags 0x02 dlen 59
+      ATT: Handle Multiple Value Notification (0x23) len 54
+        Length: 0x0008
+        Handle: 0x0036 Type: ASE Control Point (0x2bc6)
+          Data[8]: 0202030000010000
+            Opcode: QoS Configuration (0x02)
+            Number of ASE(s): 2
+            ASE: #0
+            ASE ID: 0x03
+            ASE Response Code: Success (0x00)
+            ASE Response Reason: None (0x00)
+            ASE: #1
+            ASE ID: 0x01
+            ASE Response Code: Success (0x00)
+            ASE Response Reason: None (0x00)
+        Length: 0x0011
+        Handle: 0x0030 Type: Source ASE (0x2bc5)
+          Data[17]: 0302000010270000022800020a00409c00
+            ASE ID: 3
+            State: QoS Configured (0x02)
+            CIG ID: 0x00
+            CIS ID: 0x00
+            SDU Interval: 10000 usec
+            Framing: Unframed (0x00)
+            PHY: 0x02
+            LE 2M PHY (0x02)
+            Max SDU: 40
+            RTN: 2
+            Max Transport Latency: 10
+            Presentation Delay: 40000 us
+        Length: 0x0011
+        Handle: 0x002a Type: Sink ASE (0x2bc4)
+          Data[17]: 0102000010270000025000020a00409c00
+            ASE ID: 1
+            State: QoS Configured (0x02)
+            CIG ID: 0x00
+            CIS ID: 0x00
+            SDU Interval: 10000 usec
+            Framing: Unframed (0x00)
+            PHY: 0x02
+            LE 2M PHY (0x02)
+            Max SDU: 80
+            RTN: 2
+            Max Transport Latency: 10
+            Presentation Delay: 40000 us
+---
+ src/shared/bap.c | 53 +++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 43 insertions(+), 10 deletions(-)
+
+diff --git a/src/shared/bap.c b/src/shared/bap.c
+index 3a4c1f9d3a98..d59eac8cca16 100644
+--- a/src/shared/bap.c
++++ b/src/shared/bap.c
+@@ -169,6 +169,7 @@ struct bt_bap {
+ 	unsigned int process_id;
+ 	unsigned int disconn_id;
+ 	unsigned int idle_id;
++	bool in_cp_write;
+ 
+ 	struct queue *reqs;
+ 	struct queue *notify;
+@@ -266,6 +267,7 @@ struct bt_bap_stream {
+ 	const struct bt_bap_stream_ops *ops;
+ 	uint8_t old_state;
+ 	uint8_t state;
++	unsigned int state_id;
+ 	bool client;
+ 	void *user_data;
+ };
+@@ -1102,6 +1104,8 @@ static void bap_stream_free(void *data)
+ {
+ 	struct bt_bap_stream *stream = data;
+ 
++	timeout_remove(stream->state_id);
++
+ 	if (stream->ep)
+ 		stream->ep->stream = NULL;
+ 
+@@ -1579,20 +1583,17 @@ static bool bap_queue_req(struct bt_bap *bap, struct bt_bap_req *req)
+ 	return true;
+ }
+ 
+-static void bap_ucast_set_state(struct bt_bap_stream *stream, uint8_t state)
++static bool stream_notify_state(void *data)
+ {
++	struct bt_bap_stream *stream = data;
+ 	struct bt_bap_endpoint *ep = stream->ep;
+ 
+-	ep->old_state = ep->state;
+-	ep->state = state;
+-
+-	DBG(stream->bap, "stream %p dir 0x%02x: %s -> %s", stream,
+-			bt_bap_stream_get_dir(stream),
+-			bt_bap_stream_statestr(stream->ep->old_state),
+-			bt_bap_stream_statestr(stream->ep->state));
++	DBG(stream->bap, "stream %p", stream);
+ 
+-	if (stream->lpac->type == BT_BAP_BCAST_SINK || stream->client)
+-		goto done;
++	if (stream->state_id) {
++		timeout_remove(stream->state_id);
++		stream->state_id = 0;
++	}
+ 
+ 	switch (ep->state) {
+ 	case BT_ASCS_ASE_STATE_IDLE:
+@@ -1610,6 +1611,31 @@ static void bap_ucast_set_state(struct bt_bap_stream *stream, uint8_t state)
+ 		break;
+ 	}
+ 
++	return false;
++}
++
++static void bap_ucast_set_state(struct bt_bap_stream *stream, uint8_t state)
++{
++	struct bt_bap_endpoint *ep = stream->ep;
++
++	ep->old_state = ep->state;
++	ep->state = state;
++
++	DBG(stream->bap, "stream %p dir 0x%02x: %s -> %s", stream,
++			bt_bap_stream_get_dir(stream),
++			bt_bap_stream_statestr(stream->ep->old_state),
++			bt_bap_stream_statestr(stream->ep->state));
++
++	if (stream->client)
++		goto done;
++
++	if (!stream->bap->in_cp_write)
++		stream_notify_state(stream);
++	else if (!stream->state_id)
++		stream->state_id = timeout_add(BAP_PROCESS_TIMEOUT,
++						stream_notify_state,
++						stream, NULL);
++
+ done:
+ 	bap_stream_state_changed(stream);
+ }
+@@ -3069,8 +3095,15 @@ static void ascs_ase_cp_write(struct gatt_db_attribute *attrib,
+ 
+ 		DBG(bap, "%s", handler->str);
+ 
++		/* Set in_cp_write so ASE notification are not sent ahead of
++		 * CP notifcation.
++		 */
++		bap->in_cp_write = true;
++
+ 		for (i = 0; i < hdr->num; i++)
+ 			ret = handler->func(ascs, bap, &iov, rsp);
++
++		bap->in_cp_write = false;
+ 	} else {
+ 		DBG(bap, "Unknown opcode 0x%02x", hdr->op);
+ 		ascs_ase_rsp_add_errno(rsp, 0x00, -ENOTSUP);
+-- 
+2.45.2
+
+
+From 025f07ec0d0ebfb5e83c07d2918a6c01b0ae49a6 Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Fri, 12 Jul 2024 10:52:03 -0400
+Subject: [PATCH 17/46] client/player: Add support for name custom presets
+
+This adds support for naming custom presets instead of always having
+just one "custom" codec preset which needs to be overwriten everytime
+a new set of settings needs to be entered.
+---
+ client/player.c | 130 ++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 87 insertions(+), 43 deletions(-)
+
+diff --git a/client/player.c b/client/player.c
+index 2480ed64b8e5..26190fef7bc1 100644
+--- a/client/player.c
++++ b/client/player.c
+@@ -1232,6 +1232,7 @@ struct codec_preset {
+ 	const struct iovec data;
+ 	struct bt_bap_qos qos;
+ 	uint8_t target_latency;
++	bool custom;
+ };
+ 
+ #define SBC_PRESET(_name, _data) \
+@@ -1448,7 +1449,6 @@ static void print_lc3_meta(void *data, int len)
+ 	{ \
+ 		.uuid = _uuid, \
+ 		.codec = _codec, \
+-		.custom = { .name = "custom" }, \
+ 		.default_preset = &_presets[_default_index], \
+ 		.presets = _presets, \
+ 		.num_presets = ARRAY_SIZE(_presets), \
+@@ -1459,7 +1459,7 @@ static struct preset {
+ 	uint8_t codec;
+ 	uint16_t cid;
+ 	uint16_t vid;
+-	struct codec_preset custom;
++	struct queue *custom;
+ 	struct codec_preset *default_preset;
+ 	struct codec_preset *presets;
+ 	size_t num_presets;
+@@ -1557,6 +1557,14 @@ static struct preset *find_presets_name(const char *uuid, const char *codec)
+ 	return find_presets(uuid, id, 0x0000, 0x0000);
+ }
+ 
++static bool match_custom_name(const void *data, const void *match_data)
++{
++	const struct codec_preset *preset = data;
++	const char *name = match_data;
++
++	return !strcmp(preset->name, name);
++}
++
+ static struct codec_preset *preset_find_name(struct preset *preset,
+ 						const char *name)
+ {
+@@ -1567,8 +1575,6 @@ static struct codec_preset *preset_find_name(struct preset *preset,
+ 
+ 	if (!name)
+ 		return preset->default_preset;
+-	else if (!strcmp(name, "custom"))
+-		return &preset->custom;
+ 
+ 	for (i = 0; i < preset->num_presets; i++) {
+ 		struct codec_preset *p;
+@@ -1579,19 +1585,7 @@ static struct codec_preset *preset_find_name(struct preset *preset,
+ 			return p;
+ 	}
+ 
+-	return NULL;
+-}
+-
+-static struct codec_preset *find_preset(const char *uuid, const char *codec,
+-					const char *name)
+-{
+-	struct preset *preset;
+-
+-	preset = find_presets_name(uuid, codec);
+-	if (!preset)
+-		return NULL;
+-
+-	return preset_find_name(preset, name);
++	return queue_find(preset->custom, match_custom_name, name);
+ }
+ 
+ static DBusMessage *endpoint_select_config_reply(DBusMessage *msg,
+@@ -2816,10 +2810,11 @@ static void endpoint_free(void *data)
+ 	if (ep->msg)
+ 		dbus_message_unref(ep->msg);
+ 
+-	if (ep->codec == 0xff) {
+-		free(ep->preset->custom.name);
++	queue_destroy(ep->preset->custom, free);
++	ep->preset->custom = NULL;
++
++	if (ep->codec == 0xff)
+ 		free(ep->preset);
+-	}
+ 
+ 	queue_destroy(ep->acquiring, NULL);
+ 	queue_destroy(ep->transports, free);
+@@ -3365,6 +3360,36 @@ static const struct capabilities *find_capabilities(const char *uuid,
+ 	return NULL;
+ }
+ 
++static struct codec_preset *codec_preset_new(const char *name)
++{
++	struct codec_preset *codec;
++
++	codec = new0(struct codec_preset, 1);
++	codec->name = strdup(name);
++	codec->custom = true;
++
++	return codec;
++}
++
++static struct codec_preset *codec_preset_add(struct preset *preset,
++						const char *name)
++{
++	struct codec_preset *codec;
++
++	codec = preset_find_name(preset, name);
++	if (codec)
++		return codec;
++
++	codec = codec_preset_new(name);
++
++	if (!preset->custom)
++		preset->custom = queue_new();
++
++	queue_push_tail(preset->custom, codec);
++
++	return codec;
++}
++
+ static void cmd_register_endpoint(int argc, char *argv[])
+ {
+ 	struct endpoint *ep;
+@@ -3390,8 +3415,8 @@ static void cmd_register_endpoint(int argc, char *argv[])
+ 		ep->codec = 0xff;
+ 		parse_vendor_codec(argv[2], &ep->vid, &ep->cid);
+ 		ep->preset = new0(struct preset, 1);
+-		ep->preset->custom.name = strdup("custom");
+-		ep->preset->default_preset = &ep->preset->custom;
++		ep->preset->default_preset = codec_preset_add(ep->preset,
++								"custom");
+ 	} else {
+ 		ep->preset = find_presets_name(ep->uuid, argv[2]);
+ 	}
+@@ -4060,21 +4085,27 @@ static void custom_frequency(const char *input, void *user_data)
+ 				custom_duration, user_data);
+ }
+ 
++static void foreach_custom_preset_print(void *data, void *user_data)
++{
++	struct codec_preset *p = data;
++	struct preset *preset = user_data;
++
++	bt_shell_printf("%s%s\n", p == preset->default_preset ? "*" : "",
++				p->name);
++}
++
+ static void print_presets(struct preset *preset)
+ {
+ 	size_t i;
+ 	struct codec_preset *p;
+ 
+-	p = &preset->custom;
+-
+-	bt_shell_printf("%s%s\n", p == preset->default_preset ? "*" : "",
+-								p->name);
+-
+ 	for (i = 0; i < preset->num_presets; i++) {
+ 		p = &preset->presets[i];
+ 		bt_shell_printf("%s%s\n", p == preset->default_preset ?
+ 						"*" : "", p->name);
+ 	}
++
++	queue_foreach(preset->custom, foreach_custom_preset_print, preset);
+ }
+ 
+ static void cmd_presets_endpoint(int argc, char *argv[])
+@@ -4082,29 +4113,42 @@ static void cmd_presets_endpoint(int argc, char *argv[])
+ 	struct preset *preset;
+ 	struct codec_preset *default_preset = NULL;
+ 
+-	if (argc > 3) {
+-		default_preset = find_preset(argv[1], argv[2], argv[3]);
+-		if (!default_preset) {
+-			bt_shell_printf("Preset %s not found\n", argv[3]);
+-			return bt_shell_noninteractive_quit(EXIT_FAILURE);
+-		}
+-	}
+-
+ 	preset = find_presets_name(argv[1], argv[2]);
+ 	if (!preset) {
+ 		bt_shell_printf("No preset found\n");
+ 		return bt_shell_noninteractive_quit(EXIT_FAILURE);
+ 	}
+ 
+-	if (default_preset) {
++	if (argc > 3) {
++		default_preset = codec_preset_add(preset, argv[3]);
++		if (!default_preset) {
++			bt_shell_printf("Preset %s not found\n", argv[3]);
++			return bt_shell_noninteractive_quit(EXIT_FAILURE);
++		}
+ 		preset->default_preset = default_preset;
+-		goto done;
+-	}
+ 
+-	print_presets(preset);
++		if (argc > 4) {
++			struct iovec *iov = (void *)&default_preset->data;
+ 
+-done:
+-	if (default_preset && !strcmp(default_preset->name, "custom")) {
++			iov->iov_base = str2bytearray(argv[4], &iov->iov_len);
++			if (!iov->iov_base) {
++				bt_shell_printf("Invalid configuration %s\n",
++							argv[4]);
++				return bt_shell_noninteractive_quit(
++								EXIT_FAILURE);
++			}
++
++			bt_shell_prompt_input("QoS", "Enter Target Latency "
++						"(Low, Balance, High):",
++						custom_target_latency,
++						default_preset);
++
++			return;
++		}
++	} else
++		print_presets(preset);
++
++	if (default_preset && default_preset->custom) {
+ 		bt_shell_prompt_input("Codec", "Enter frequency (Khz):",
+ 					custom_frequency, default_preset);
+ 		return;
+@@ -4133,9 +4177,9 @@ static const struct bt_shell_menu endpoint_menu = {
+ 						cmd_config_endpoint,
+ 						"Configure Endpoint",
+ 						endpoint_generator },
+-	{ "presets",      "<UUID> <codec[:company]> [default]",
++	{ "presets",      "<UUID> <codec[:company]> [preset] [config]",
+ 						cmd_presets_endpoint,
+-						"List available presets",
++						"List or add presets",
+ 						uuid_generator },
+ 	{} },
+ };
+-- 
+2.45.2
+
+
+From 957c956112cc2bba528fe8df4a0a21d221a617ca Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Thu, 18 Jul 2024 13:58:52 -0400
+Subject: [PATCH 18/46] client/player: Fix printing errors when
+ transport->filename is not set
+
+If transport->filename is not set don't attempt to write to the
+transport->fd.
+---
+ client/player.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/client/player.c b/client/player.c
+index 26190fef7bc1..5b0b918fb8d7 100644
+--- a/client/player.c
++++ b/client/player.c
+@@ -4575,10 +4575,10 @@ static bool transport_recv(struct io *io, void *user_data)
+ 
+ 	transport->seq++;
+ 
+-	if (transport->fd >= 0) {
++	if (transport->filename) {
+ 		len = write(transport->fd, buf, ret);
+ 		if (len < 0)
+-			bt_shell_printf("Unable to write: %s (%d)",
++			bt_shell_printf("Unable to write: %s (%d)\n",
+ 						strerror(errno), -errno);
+ 	}
+ 
+-- 
+2.45.2
+
+
+From 0bad3d5cbea84b24d53e86de7c419e893bb19a93 Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Tue, 16 Jul 2024 11:11:31 +0300
+Subject: [PATCH 19/46] bap: Fix crash in bap_bcast_remove
+
+This adds a check for the PA request dequeued in bap_bcast_remove,
+to avoid accessing a member within a NULL pointer.
+---
+ profiles/audio/bap.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
+index afa938091996..16c02524f2d0 100644
+--- a/profiles/audio/bap.c
++++ b/profiles/audio/bap.c
+@@ -3194,7 +3194,7 @@ static void bap_bcast_remove(struct btd_service *service)
+ 	 */
+ 	req = queue_remove_if(data->adapter->bcast_pa_requests,
+ 						match_service, service);
+-	if (req->io_id) {
++	if (req && req->io_id) {
+ 		g_source_remove(req->io_id);
+ 		req->io_id = 0;
+ 	}
+-- 
+2.45.2
+
+
+From caa4202a7ee3423211733f7883641c77666dfbbf Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Tue, 16 Jul 2024 17:21:58 +0300
+Subject: [PATCH 20/46] shared/bap: Add separate API to merge caps
+
+This moves the logic to merge L2 and L3 capabilities discovered
+inside a BASE structure in a public API.
+---
+ src/shared/bap.c | 40 ++++++++++++++++++++++++----------------
+ src/shared/bap.h |  2 ++
+ 2 files changed, 26 insertions(+), 16 deletions(-)
+
+diff --git a/src/shared/bap.c b/src/shared/bap.c
+index d59eac8cca16..1259ee3c90ef 100644
+--- a/src/shared/bap.c
++++ b/src/shared/bap.c
+@@ -6607,29 +6607,21 @@ static struct bt_ltv_match bap_check_bis(struct bt_bap_db *ldb,
+ 	return compare_data;
+ }
+ 
+-void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
+-		struct bt_bap_codec *codec,
+-		struct iovec *l2_caps,
+-		struct iovec *l3_caps,
+-		struct bt_bap_pac **lpac,
+-		struct iovec **caps)
++struct iovec *bt_bap_merge_caps(struct iovec *l2_caps, struct iovec *l3_caps)
+ {
+ 	struct bt_ltv_extract merge_data = {0};
+-	struct bt_ltv_match match_data;
+ 
+ 	if (!l2_caps)
+ 		/* Codec_Specific_Configuration parameters shall
+ 		 * be present at Level 2.
+ 		 */
+-		return;
++		return NULL;
+ 
+-	if (!l3_caps) {
++	if (!l3_caps)
+ 		/* Codec_Specific_Configuration parameters may
+ 		 * be present at Level 3.
+ 		 */
+-		merge_data.result = util_iov_dup(l2_caps, 1);
+-		goto done;
+-	}
++		return util_iov_dup(l2_caps, 1);
+ 
+ 	merge_data.src = l3_caps;
+ 	merge_data.result = new0(struct iovec, 1);
+@@ -6642,17 +6634,33 @@ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
+ 			NULL,
+ 			bap_sink_check_level2_ltv, &merge_data);
+ 
+-done:
++	return merge_data.result;
++}
++
++void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
++		struct bt_bap_codec *codec,
++		struct iovec *l2_caps,
++		struct iovec *l3_caps,
++		struct bt_bap_pac **lpac,
++		struct iovec **caps)
++{
++	struct iovec *merged_caps;
++	struct bt_ltv_match match_data;
++
++	merged_caps = bt_bap_merge_caps(l2_caps, l3_caps);
++	if (!merged_caps)
++		return;
++
+ 	/* Check each BIS Codec Specific Configuration LTVs against our Codec
+ 	 * Specific Capabilities and if the BIS matches create a PAC with it
+ 	 */
+-	match_data = bap_check_bis(bap->ldb, merge_data.result);
++	match_data = bap_check_bis(bap->ldb, merged_caps);
+ 	if (match_data.found == true) {
+-		*caps = merge_data.result;
++		*caps = merged_caps;
+ 		*lpac = match_data.data;
+ 		DBG(bap, "Matching BIS %i", bis_index);
+ 	} else {
+-		util_iov_free(merge_data.result, 1);
++		util_iov_free(merged_caps, 1);
+ 		*caps = NULL;
+ 		*lpac = NULL;
+ 	}
+diff --git a/src/shared/bap.h b/src/shared/bap.h
+index b35b2711edb9..e63161dca4e8 100644
+--- a/src/shared/bap.h
++++ b/src/shared/bap.h
+@@ -251,6 +251,8 @@ bool bt_bap_pac_bcast_is_local(struct bt_bap *bap, struct bt_bap_pac *pac);
+ 
+ struct iovec *bt_bap_stream_get_base(struct bt_bap_stream *stream);
+ 
++struct iovec *bt_bap_merge_caps(struct iovec *l2_caps, struct iovec *l3_caps);
++
+ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
+ 		struct bt_bap_codec *codec,
+ 		struct iovec *l2_caps,
+-- 
+2.45.2
+
+
+From 679349fbc9f2eaf4216cca0ca45f25e4d2829c9d Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Tue, 16 Jul 2024 17:21:59 +0300
+Subject: [PATCH 21/46] shared/bap: Update bt_bap_verify_bis to receive caps
+
+This updates bt_bap_verify_bis to receive the already merged L2 and L3
+capabilities, instead of computing it internally.
+---
+ profiles/audio/bap.c | 11 ++++++++---
+ src/shared/bap.c     | 15 ++++-----------
+ src/shared/bap.h     |  6 ++----
+ unit/test-bap.c      |  7 ++++---
+ 4 files changed, 18 insertions(+), 21 deletions(-)
+
+diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
+index 16c02524f2d0..81b5051f089a 100644
+--- a/profiles/audio/bap.c
++++ b/profiles/audio/bap.c
+@@ -1191,12 +1191,17 @@ static bool parse_base(struct bap_data *bap_data, struct bt_iso_base *base,
+ 					l3_caps->iov_len, NULL, print_ltv,
+ 					func);
+ 
++			merged_caps = bt_bap_merge_caps(l2_caps, l3_caps);
++			if (!merged_caps) {
++				free(path);
++				continue;
++			}
++
+ 			/* Check if this BIS matches any local PAC */
+ 			bt_bap_verify_bis(bap_data->bap, bis_index, &codec,
+-					l2_caps, l3_caps, &matched_lpac,
+-					&merged_caps);
++					merged_caps, &matched_lpac);
+ 
+-			if (matched_lpac == NULL || merged_caps == NULL) {
++			if (matched_lpac == NULL) {
+ 				free(path);
+ 				continue;
+ 			}
+diff --git a/src/shared/bap.c b/src/shared/bap.c
+index 1259ee3c90ef..3381ffdd43ee 100644
+--- a/src/shared/bap.c
++++ b/src/shared/bap.c
+@@ -6639,29 +6639,22 @@ struct iovec *bt_bap_merge_caps(struct iovec *l2_caps, struct iovec *l3_caps)
+ 
+ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
+ 		struct bt_bap_codec *codec,
+-		struct iovec *l2_caps,
+-		struct iovec *l3_caps,
+-		struct bt_bap_pac **lpac,
+-		struct iovec **caps)
++		struct iovec *caps,
++		struct bt_bap_pac **lpac)
+ {
+-	struct iovec *merged_caps;
+ 	struct bt_ltv_match match_data;
+ 
+-	merged_caps = bt_bap_merge_caps(l2_caps, l3_caps);
+-	if (!merged_caps)
++	if (!caps)
+ 		return;
+ 
+ 	/* Check each BIS Codec Specific Configuration LTVs against our Codec
+ 	 * Specific Capabilities and if the BIS matches create a PAC with it
+ 	 */
+-	match_data = bap_check_bis(bap->ldb, merged_caps);
++	match_data = bap_check_bis(bap->ldb, caps);
+ 	if (match_data.found == true) {
+-		*caps = merged_caps;
+ 		*lpac = match_data.data;
+ 		DBG(bap, "Matching BIS %i", bis_index);
+ 	} else {
+-		util_iov_free(merged_caps, 1);
+-		*caps = NULL;
+ 		*lpac = NULL;
+ 	}
+ 
+diff --git a/src/shared/bap.h b/src/shared/bap.h
+index e63161dca4e8..3e68f00e2e29 100644
+--- a/src/shared/bap.h
++++ b/src/shared/bap.h
+@@ -255,8 +255,6 @@ struct iovec *bt_bap_merge_caps(struct iovec *l2_caps, struct iovec *l3_caps);
+ 
+ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
+ 		struct bt_bap_codec *codec,
+-		struct iovec *l2_caps,
+-		struct iovec *l3_caps,
+-		struct bt_bap_pac **lpac,
+-		struct iovec **caps);
++		struct iovec *caps,
++		struct bt_bap_pac **lpac);
+ 
+diff --git a/unit/test-bap.c b/unit/test-bap.c
+index 9dd7a45e89c1..4b47d6363a80 100644
+--- a/unit/test-bap.c
++++ b/unit/test-bap.c
+@@ -587,12 +587,13 @@ static void bsnk_pac_added(struct bt_bap_pac *pac, void *user_data)
+ 		codec.id = LC3_ID;
+ 
+ 	for (uint8_t i = 0; i < data->cfg->streams; i++) {
+-		bt_bap_verify_bis(data->bap, bis_idx++, &codec,
+-				&data->cfg->cc, NULL, &lpac, &cc);
++		cc = bt_bap_merge_caps(&data->cfg->cc, NULL);
++		g_assert(cc);
++
++		bt_bap_verify_bis(data->bap, bis_idx++, &codec, cc, &lpac);
+ 
+ 		g_assert(lpac);
+ 		g_assert(pac == lpac);
+-		g_assert(cc);
+ 
+ 		stream = bt_bap_stream_new(data->bap,
+ 			pac, NULL, &data->cfg->qos, cc);
+-- 
+2.45.2
+
+
+From bbcf4891cd46f53e35761db808155dc0fb89b175 Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Tue, 16 Jul 2024 17:22:00 +0300
+Subject: [PATCH 22/46] shared/bap: Remove unused param from bt_bap_verify_bis
+
+This removes the codec parameter from bt_bap_verify_bis,
+since it is not used.
+---
+ profiles/audio/bap.c | 2 +-
+ src/shared/bap.c     | 1 -
+ src/shared/bap.h     | 1 -
+ unit/test-bap.c      | 8 +-------
+ 4 files changed, 2 insertions(+), 10 deletions(-)
+
+diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
+index 81b5051f089a..b76d5385fa10 100644
+--- a/profiles/audio/bap.c
++++ b/profiles/audio/bap.c
+@@ -1198,7 +1198,7 @@ static bool parse_base(struct bap_data *bap_data, struct bt_iso_base *base,
+ 			}
+ 
+ 			/* Check if this BIS matches any local PAC */
+-			bt_bap_verify_bis(bap_data->bap, bis_index, &codec,
++			bt_bap_verify_bis(bap_data->bap, bis_index,
+ 					merged_caps, &matched_lpac);
+ 
+ 			if (matched_lpac == NULL) {
+diff --git a/src/shared/bap.c b/src/shared/bap.c
+index 3381ffdd43ee..d2a500e486ed 100644
+--- a/src/shared/bap.c
++++ b/src/shared/bap.c
+@@ -6638,7 +6638,6 @@ struct iovec *bt_bap_merge_caps(struct iovec *l2_caps, struct iovec *l3_caps)
+ }
+ 
+ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
+-		struct bt_bap_codec *codec,
+ 		struct iovec *caps,
+ 		struct bt_bap_pac **lpac)
+ {
+diff --git a/src/shared/bap.h b/src/shared/bap.h
+index 3e68f00e2e29..bf928bc2d577 100644
+--- a/src/shared/bap.h
++++ b/src/shared/bap.h
+@@ -254,7 +254,6 @@ struct iovec *bt_bap_stream_get_base(struct bt_bap_stream *stream);
+ struct iovec *bt_bap_merge_caps(struct iovec *l2_caps, struct iovec *l3_caps);
+ 
+ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
+-		struct bt_bap_codec *codec,
+ 		struct iovec *caps,
+ 		struct bt_bap_pac **lpac);
+ 
+diff --git a/unit/test-bap.c b/unit/test-bap.c
+index 4b47d6363a80..9cfc8c403ef0 100644
+--- a/unit/test-bap.c
++++ b/unit/test-bap.c
+@@ -575,22 +575,16 @@ static void bsnk_pac_added(struct bt_bap_pac *pac, void *user_data)
+ 	struct test_data *data = user_data;
+ 	struct bt_bap_pac *lpac;
+ 	struct iovec *cc;
+-	struct bt_bap_codec codec = {0};
+ 	struct bt_bap_stream *stream;
+ 	uint8_t bis_idx = 1;
+ 
+ 	bt_bap_pac_set_ops(pac, &bcast_pac_ops, NULL);
+ 
+-	if (data->cfg->vs)
+-		codec.id = 0xff;
+-	else
+-		codec.id = LC3_ID;
+-
+ 	for (uint8_t i = 0; i < data->cfg->streams; i++) {
+ 		cc = bt_bap_merge_caps(&data->cfg->cc, NULL);
+ 		g_assert(cc);
+ 
+-		bt_bap_verify_bis(data->bap, bis_idx++, &codec, cc, &lpac);
++		bt_bap_verify_bis(data->bap, bis_idx++, cc, &lpac);
+ 
+ 		g_assert(lpac);
+ 		g_assert(pac == lpac);
+-- 
+2.45.2
+
+
+From 662aee4357f8975763280fec0e6cd35b2082200d Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Tue, 16 Jul 2024 17:22:01 +0300
+Subject: [PATCH 23/46] shared/bap: Allow checking bis caps against peer caps
+
+A BAP Broadcast Assistant needs to match stream capabilities with
+capabilities discovered in the Sink PAC characteristic on the peer.
+
+This updates bt_bap_verify_bis to check the provided stream capabilities
+against local or remote capabilities, depending on the bap structure
+provided:
+
+If the device is acting as a BAP Broadcast Sink and the bap session was
+created after scanning a Broadcast Source, the stream caps will be matched
+with the local broadcast sink PAC.
+
+If the device is acting as a Broadcast Assistant and the bap session is a
+client session with a BAP Scan Delegator, the stream caps will be matched
+with the PAC records populated in the rdb at service discovery.
+---
+ src/shared/bap.c | 26 ++++++++++++++++++++------
+ 1 file changed, 20 insertions(+), 6 deletions(-)
+
+diff --git a/src/shared/bap.c b/src/shared/bap.c
+index d2a500e486ed..44fb06169e4e 100644
+--- a/src/shared/bap.c
++++ b/src/shared/bap.c
+@@ -6577,7 +6577,7 @@ static void bap_sink_match_allocation(size_t i, uint8_t l, uint8_t t,
+ 		data->found = false;
+ }
+ 
+-static struct bt_ltv_match bap_check_bis(struct bt_bap_db *ldb,
++static struct bt_ltv_match bap_check_bis(uint32_t sink_loc, struct queue *pacs,
+ 	struct iovec *bis_data)
+ {
+ 	struct bt_ltv_match compare_data = {};
+@@ -6588,10 +6588,10 @@ static struct bt_ltv_match bap_check_bis(struct bt_bap_db *ldb,
+ 	 */
+ 	compare_data.found = true;
+ 
+-	if (ldb->pacs->sink_loc_value) {
++	if (sink_loc) {
+ 		uint8_t type = BAP_CHANNEL_ALLOCATION_LTV_TYPE;
+ 
+-		compare_data.data32 = ldb->pacs->sink_loc_value;
++		compare_data.data32 = sink_loc;
+ 		util_ltv_foreach(bis_data->iov_base, bis_data->iov_len, &type,
+ 				bap_sink_match_allocation, &compare_data);
+ 	}
+@@ -6600,8 +6600,7 @@ static struct bt_ltv_match bap_check_bis(struct bt_bap_db *ldb,
+ 	if (compare_data.found) {
+ 		compare_data.data = bis_data;
+ 		compare_data.found = false;
+-		queue_foreach(ldb->broadcast_sinks, check_local_pac,
+-				&compare_data);
++		queue_foreach(pacs, check_local_pac, &compare_data);
+ 	}
+ 
+ 	return compare_data;
+@@ -6642,14 +6641,29 @@ void bt_bap_verify_bis(struct bt_bap *bap, uint8_t bis_index,
+ 		struct bt_bap_pac **lpac)
+ {
+ 	struct bt_ltv_match match_data;
++	uint32_t sink_loc;
++	struct queue *pacs;
+ 
+ 	if (!caps)
+ 		return;
+ 
++	/* If the bap session corresponds to a client connection with
++	 * a BAP Server, bis caps should be checked against peer caps.
++	 * If the bap session corresponds to a scanned broadcast source,
++	 * bis caps should be checked against local broadcast sink caps.
++	 */
++	if (bap->client) {
++		sink_loc = bap->rdb->pacs->sink_loc_value;
++		pacs = bap->rdb->sinks;
++	} else {
++		sink_loc = bap->ldb->pacs->sink_loc_value;
++		pacs = bap->ldb->broadcast_sinks;
++	}
++
+ 	/* Check each BIS Codec Specific Configuration LTVs against our Codec
+ 	 * Specific Capabilities and if the BIS matches create a PAC with it
+ 	 */
+-	match_data = bap_check_bis(bap->ldb, caps);
++	match_data = bap_check_bis(sink_loc, pacs, caps);
+ 	if (match_data.found == true) {
+ 		*lpac = match_data.data;
+ 		DBG(bap, "Matching BIS %i", bis_index);
+-- 
+2.45.2
+
+
+From 2c98c478863ee9e213a4129f0f4fee2b16b678da Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Tue, 16 Jul 2024 17:22:02 +0300
+Subject: [PATCH 24/46] shared/bap: Append bcast sink pacs to Sink PAC char
+
+It is mandatory for a BAP Broadcast Sink to support the PACS Server role.
+The Sink PAC characteristic should contain PAC records that expose
+supported audio capabilities for receiving both unicast and broadcast
+streams.
+
+A BAP Broadcast Assistant acting as a GATT Client needs to discover the
+Sink PAC characteristic on the BAP Scan Delegator peer (BAP Broadcast
+Sink), in order to discover supported capabilities for receiving streams.
+
+This commit updates the callback for handling read requests for the Sink
+PAC characteristic, to also append Broadcast Sink pac structures to the
+read response.
+---
+ src/shared/bap.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/shared/bap.c b/src/shared/bap.c
+index 44fb06169e4e..0aa89c2781ba 100644
+--- a/src/shared/bap.c
++++ b/src/shared/bap.c
+@@ -441,6 +441,7 @@ static void pacs_sink_read(struct gatt_db_attribute *attrib,
+ 	iov.iov_len = 0;
+ 
+ 	queue_foreach(bdb->sinks, pac_foreach, &iov);
++	queue_foreach(bdb->broadcast_sinks, pac_foreach, &iov);
+ 
+ 	gatt_db_attribute_read_result(attrib, id, 0, iov.iov_base,
+ 							iov.iov_len);
+-- 
+2.45.2
+
+
+From f163913488106929081026c56c236800aa6f8269 Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Tue, 16 Jul 2024 17:22:03 +0300
+Subject: [PATCH 25/46] bap: Add API to get bt_bap matching device
+
+This adds a public BAP API to obtain a reference to the bt_bap session
+with a peer device.
+---
+ Makefile.plugins     |  2 +-
+ profiles/audio/bap.c | 21 +++++++++++++++++++++
+ profiles/audio/bap.h | 10 ++++++++++
+ 3 files changed, 32 insertions(+), 1 deletion(-)
+ create mode 100644 profiles/audio/bap.h
+
+diff --git a/Makefile.plugins b/Makefile.plugins
+index 44fda45367d9..9dd8134b42c5 100644
+--- a/Makefile.plugins
++++ b/Makefile.plugins
+@@ -115,7 +115,7 @@ endif
+ 
+ if BAP
+ builtin_modules += bap
+-builtin_sources += profiles/audio/bap.c
++builtin_sources += profiles/audio/bap.h profiles/audio/bap.c
+ endif
+ 
+ if BASS
+diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
+index b76d5385fa10..79e9cc52791e 100644
+--- a/profiles/audio/bap.c
++++ b/profiles/audio/bap.c
+@@ -56,6 +56,8 @@
+ #include "src/log.h"
+ #include "src/error.h"
+ 
++#include "bap.h"
++
+ #define ISO_SOCKET_UUID "6fbaf188-05e0-496a-9885-d6ddfdb4e03e"
+ #define PACS_UUID_STR "00001850-0000-1000-8000-00805f9b34fb"
+ #define BCAAS_UUID_STR "00001852-0000-1000-8000-00805f9b34fb"
+@@ -2751,6 +2753,25 @@ static void pac_removed_broadcast(struct bt_bap_pac *pac, void *user_data)
+ 	ep_unregister(ep);
+ }
+ 
++static bool match_device(const void *data, const void *match_data)
++{
++	const struct bap_data *bdata = data;
++	const struct btd_device *device = match_data;
++
++	return bdata->device == device;
++}
++
++struct bt_bap *bap_get_session(struct btd_device *device)
++{
++	struct bap_data *data;
++
++	data = queue_find(sessions, match_device, device);
++	if (!data)
++		return NULL;
++
++	return data->bap;
++}
++
+ static struct bap_data *bap_data_new(struct btd_device *device)
+ {
+ 	struct bap_data *data;
+diff --git a/profiles/audio/bap.h b/profiles/audio/bap.h
+new file mode 100644
+index 000000000000..66f8db88713a
+--- /dev/null
++++ b/profiles/audio/bap.h
+@@ -0,0 +1,10 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ *
++ *  BlueZ - Bluetooth protocol stack for Linux
++ *
++ *  Copyright 2024 NXP
++ *
++ */
++
++struct bt_bap *bap_get_session(struct btd_device *device);
+-- 
+2.45.2
+
+
+From 88bf423eb525655e15890bdca84d9acb5afab122 Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Tue, 16 Jul 2024 17:22:04 +0300
+Subject: [PATCH 26/46] shared/bass: Add API to get GATT client reference
+
+Some use cases require the BASS plugin to differentiate between client and
+server BASS sessions - for example, the BAP Broadcast Assistant role only
+considers client BASS sessions.
+
+This adds a BASS API to obtain a reference to the bt_gatt_client structure
+attached to the bt_bass session.
+---
+ src/shared/bass.c | 8 ++++++++
+ src/shared/bass.h | 1 +
+ 2 files changed, 9 insertions(+)
+
+diff --git a/src/shared/bass.c b/src/shared/bass.c
+index d82c043ac0db..268e3bd8613e 100644
+--- a/src/shared/bass.c
++++ b/src/shared/bass.c
+@@ -1683,6 +1683,14 @@ struct bt_att *bt_bass_get_att(struct bt_bass *bass)
+ 	return bt_gatt_client_get_att(bass->client);
+ }
+ 
++struct bt_gatt_client *bt_bass_get_client(struct bt_bass *bass)
++{
++	if (!bass)
++		return NULL;
++
++	return bass->client;
++}
++
+ bool bt_bass_set_debug(struct bt_bass *bass, bt_bass_debug_func_t func,
+ 			void *user_data, bt_bass_destroy_func_t destroy)
+ {
+diff --git a/src/shared/bass.h b/src/shared/bass.h
+index c4b5b76baa53..1674146bca10 100644
+--- a/src/shared/bass.h
++++ b/src/shared/bass.h
+@@ -121,6 +121,7 @@ typedef void (*bt_bass_destroy_func_t)(void *user_data);
+ typedef void (*bt_bass_debug_func_t)(const char *str, void *user_data);
+ 
+ struct bt_att *bt_bass_get_att(struct bt_bass *bass);
++struct bt_gatt_client *bt_bass_get_client(struct bt_bass *bass);
+ unsigned int bt_bass_register(bt_bass_func_t attached, bt_bass_func_t detached,
+ 							void *user_data);
+ bool bt_bass_unregister(unsigned int id);
+-- 
+2.45.2
+
+
+From 77e4c0976c0d342e45f0ad1b485efd7e60863e30 Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Tue, 16 Jul 2024 17:22:05 +0300
+Subject: [PATCH 27/46] bass: Register MediaAssistant objects
+
+This adds an initial implementation of the BAP Broadcast Assistant role
+in the BASS plugin, by introducing the MediaAssistant DBus object.
+
+The BAP plugin implements the callback to probe Broadcast Sources and
+parse the BASE. This commit adds 2 BASS APIs, that will be called by the
+BAP plugin to notify BISes discovered in the BASE of a broadcaster to
+BASS, or to inform the BASS plugin that a broadcaster has been removed.
+
+For each BASS client session, the BASS plugin checks BIS caps against
+the peer caps, and registers a MediaAssistant object for each match.
+---
+ Makefile.plugins      |   2 +-
+ profiles/audio/bass.c | 257 ++++++++++++++++++++++++++++++++++++++++++
+ profiles/audio/bass.h |  13 +++
+ 3 files changed, 271 insertions(+), 1 deletion(-)
+ create mode 100644 profiles/audio/bass.h
+
+diff --git a/Makefile.plugins b/Makefile.plugins
+index 9dd8134b42c5..9da29a3ce43a 100644
+--- a/Makefile.plugins
++++ b/Makefile.plugins
+@@ -120,7 +120,7 @@ endif
+ 
+ if BASS
+ builtin_modules += bass
+-builtin_sources += profiles/audio/bass.c
++builtin_sources += profiles/audio/bass.h profiles/audio/bass.c
+ endif
+ 
+ if MCP
+diff --git a/profiles/audio/bass.c b/profiles/audio/bass.c
+index 7952105c51bb..083988358735 100644
+--- a/profiles/audio/bass.c
++++ b/profiles/audio/bass.c
+@@ -39,6 +39,7 @@
+ #include "src/shared/gatt-server.h"
+ #include "src/adapter.h"
+ #include "src/shared/bass.h"
++#include "src/shared/bap.h"
+ 
+ #include "src/plugin.h"
+ #include "src/gatt-database.h"
+@@ -48,21 +49,265 @@
+ #include "src/log.h"
+ #include "src/error.h"
+ 
++#include "bass.h"
++#include "bap.h"
++
+ #define BASS_UUID_STR "0000184f-0000-1000-8000-00805f9b34fb"
+ 
++#define MEDIA_ASSISTANT_INTERFACE "org.bluez.MediaAssistant1"
++
++enum assistant_state {
++	ASSISTANT_STATE_IDLE,		/* Assistant object was created for
++					 * the stream
++					 */
++	ASSISTANT_STATE_PENDING,	/* Assistant object was pushed */
++	ASSISTANT_STATE_REQUESTING,	/* Remote device requires
++					 * Broadcast_Code
++					 */
++	ASSISTANT_STATE_ACTIVE,		/* Remote device started receiving
++					 * stream
++					 */
++};
++
+ struct bass_data {
+ 	struct btd_device *device;
+ 	struct btd_service *service;
+ 	struct bt_bass *bass;
+ };
+ 
++struct bass_assistant {
++	struct btd_device *device;	/* Broadcast source device */
++	struct bass_data *data;		/* BASS session with peer device */
++	uint8_t sgrp;
++	uint8_t bis;
++	struct bt_iso_qos qos;
++	struct iovec *meta;
++	struct iovec *caps;
++	enum assistant_state state;
++	char *path;
++};
++
+ static struct queue *sessions;
++static struct queue *assistants;
+ 
+ static void bass_debug(const char *str, void *user_data)
+ {
+ 	DBG_IDX(0xffff, "%s", str);
+ }
+ 
++static DBusMessage *push(DBusConnection *conn, DBusMessage *msg,
++							  void *user_data)
++{
++	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
++}
++
++static const GDBusMethodTable assistant_methods[] = {
++	{GDBUS_EXPERIMENTAL_ASYNC_METHOD("Push",
++					GDBUS_ARGS({ "Props", "a{sv}" }),
++					NULL, push)},
++	{},
++};
++
++static const char *state2str(enum assistant_state state)
++{
++	switch (state) {
++	case ASSISTANT_STATE_IDLE:
++		return "idle";
++	case ASSISTANT_STATE_PENDING:
++		return "pending";
++	case ASSISTANT_STATE_REQUESTING:
++		return "requesting";
++	case ASSISTANT_STATE_ACTIVE:
++		return "active";
++	}
++
++	return NULL;
++}
++
++static gboolean get_state(const GDBusPropertyTable *property,
++					DBusMessageIter *iter, void *data)
++{
++	struct bass_assistant *assistant = data;
++	const char *state = state2str(assistant->state);
++
++	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &state);
++
++	return TRUE;
++}
++
++static gboolean get_metadata(const GDBusPropertyTable *property,
++					DBusMessageIter *iter, void *data)
++{
++	struct bass_assistant *assistant = data;
++	DBusMessageIter array;
++
++	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
++					DBUS_TYPE_BYTE_AS_STRING, &array);
++
++	if (assistant->meta)
++		dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
++						&assistant->meta->iov_base,
++						assistant->meta->iov_len);
++
++	dbus_message_iter_close_container(iter, &array);
++
++	return TRUE;
++}
++
++static gboolean get_qos(const GDBusPropertyTable *property,
++					DBusMessageIter *iter, void *data)
++{
++	struct bass_assistant *assistant = data;
++	DBusMessageIter dict;
++	uint8_t *bcode = assistant->qos.bcast.bcode;
++
++	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
++					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
++					DBUS_TYPE_STRING_AS_STRING
++					DBUS_TYPE_VARIANT_AS_STRING
++					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
++					&dict);
++
++	dict_append_entry(&dict, "Encryption", DBUS_TYPE_BYTE,
++				&assistant->qos.bcast.encryption);
++	dict_append_array(&dict, "BCode", DBUS_TYPE_BYTE,
++				&bcode, BT_BASS_BCAST_CODE_SIZE);
++
++	dbus_message_iter_close_container(iter, &dict);
++
++	return TRUE;
++}
++
++static const GDBusPropertyTable assistant_properties[] = {
++	{ "State", "s", get_state },
++	{ "Metadata", "ay", get_metadata, NULL, NULL,
++					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
++	{ "QoS", "a{sv}", get_qos, NULL, NULL,
++					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
++	{ }
++};
++
++static void assistant_free(void *data)
++{
++	struct bass_assistant *assistant = data;
++
++	g_free(assistant->path);
++	util_iov_free(assistant->meta, 1);
++	util_iov_free(assistant->caps, 1);
++
++	free(assistant);
++}
++
++static struct bass_assistant *assistant_new(struct btd_adapter *adapter,
++		struct btd_device *device, struct bass_data *data,
++		uint8_t sgrp, uint8_t bis, struct bt_iso_qos *qos,
++		struct iovec *meta, struct iovec *caps)
++{
++	struct bass_assistant *assistant;
++	char src_addr[18];
++	char dev_addr[18];
++
++	assistant = new0(struct bass_assistant, 1);
++	if (!assistant)
++		return NULL;
++
++	DBG("assistant %p", assistant);
++
++	assistant->device = device;
++	assistant->data = data;
++	assistant->sgrp = sgrp;
++	assistant->bis = bis;
++	assistant->qos = *qos;
++	assistant->meta = util_iov_dup(meta, 1);
++	assistant->caps = util_iov_dup(caps, 1);
++
++	ba2str(device_get_address(device), src_addr);
++	ba2str(device_get_address(data->device), dev_addr);
++
++	assistant->path = g_strdup_printf("%s/src_%s/dev_%s/bis%d",
++		adapter_get_path(adapter), src_addr, dev_addr, bis);
++
++	g_strdelimit(assistant->path, ":", '_');
++
++	if (!assistants)
++		assistants = queue_new();
++
++	queue_push_tail(assistants, assistant);
++
++	return assistant;
++}
++
++void bass_add_stream(struct btd_device *device, struct iovec *meta,
++			struct iovec *caps, struct bt_iso_qos *qos,
++			uint8_t sgrp, uint8_t bis)
++{
++	const struct queue_entry *entry;
++	struct bt_bap *bap;
++	struct bt_bap_pac *pac;
++	struct bass_assistant *assistant;
++	char addr[18];
++
++	for (entry = queue_get_entries(sessions); entry; entry = entry->next) {
++		struct bass_data *data = entry->data;
++		struct btd_adapter *adapter = device_get_adapter(data->device);
++
++		if (!bt_bass_get_client(data->bass))
++			/* Only client sessions must be handled */
++			continue;
++
++		bap = bap_get_session(data->device);
++		if (!bap)
++			continue;
++
++		/* Check stream capabilities against peer caps. */
++		bt_bap_verify_bis(bap, bis, caps, &pac);
++
++		if (!pac)
++			/* Capabilities did not match. */
++			continue;
++
++		ba2str(device_get_address(device), addr);
++
++		DBG("%s data %p BIS %d", addr, data, bis);
++
++		assistant = assistant_new(adapter, device, data, sgrp,
++							bis, qos, meta, caps);
++
++		if (g_dbus_register_interface(btd_get_dbus_connection(),
++						assistant->path,
++						MEDIA_ASSISTANT_INTERFACE,
++						assistant_methods, NULL,
++						assistant_properties,
++						assistant,
++						assistant_free) == FALSE)
++			DBG("Could not register path %s", assistant->path);
++	}
++}
++
++static bool assistant_match_device(const void *data, const void *match_data)
++{
++	const struct bass_assistant *assistant = data;
++	const struct btd_device *device = match_data;
++
++	return (assistant->device == device);
++}
++
++static void unregister_assistant(void *data)
++{
++	struct bass_assistant *assistant = data;
++
++	DBG("%p", assistant);
++
++	g_dbus_unregister_interface(btd_get_dbus_connection(),
++				assistant->path, MEDIA_ASSISTANT_INTERFACE);
++}
++
++void bass_remove_stream(struct btd_device *device)
++{
++	queue_remove_all(assistants, assistant_match_device,
++		device, unregister_assistant);
++}
++
+ static struct bass_data *bass_data_new(struct btd_device *device)
+ {
+ 	struct bass_data *data;
+@@ -101,6 +346,14 @@ static bool match_data(const void *data, const void *match_data)
+ 	return bdata->bass == bass;
+ }
+ 
++static bool assistant_match_data(const void *data, const void *match_data)
++{
++	const struct bass_assistant *assistant = data;
++	const struct bass_data *bdata = match_data;
++
++	return (assistant->data == bdata);
++}
++
+ static void bass_data_free(struct bass_data *data)
+ {
+ 	if (data->service) {
+@@ -109,6 +362,10 @@ static void bass_data_free(struct bass_data *data)
+ 	}
+ 
+ 	bt_bass_unref(data->bass);
++
++	queue_remove_all(assistants, assistant_match_data,
++		data, unregister_assistant);
++
+ 	free(data);
+ }
+ 
+diff --git a/profiles/audio/bass.h b/profiles/audio/bass.h
+new file mode 100644
+index 000000000000..5bef92946c46
+--- /dev/null
++++ b/profiles/audio/bass.h
+@@ -0,0 +1,13 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ *
++ *  BlueZ - Bluetooth protocol stack for Linux
++ *
++ *  Copyright 2024 NXP
++ *
++ */
++
++void bass_add_stream(struct btd_device *device, struct iovec *meta,
++			struct iovec *caps, struct bt_iso_qos *qos,
++			uint8_t sgrp, uint8_t bis);
++void bass_remove_stream(struct btd_device *device);
+-- 
+2.45.2
+
+
+From 22779f0bce61cfd5cd72f4e2c199aaa385067248 Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Tue, 16 Jul 2024 17:22:06 +0300
+Subject: [PATCH 28/46] bap: Notify scanned BISes to BASS
+
+This updates the BAP implementation to also notify the BASS plugin about
+scanned broadcast streams, or when a scanned broadcaster is removed. This
+is needed for the BAP Broadcast Assistant role - the BASS plugin registers
+MediaAssistant objects for each detected stream that matches the audio
+capabilities of peer Scan Delegator devices.
+---
+ profiles/audio/bap.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
+index 79e9cc52791e..53f430d66171 100644
+--- a/profiles/audio/bap.c
++++ b/profiles/audio/bap.c
+@@ -57,6 +57,7 @@
+ #include "src/error.h"
+ 
+ #include "bap.h"
++#include "bass.h"
+ 
+ #define ISO_SOCKET_UUID "6fbaf188-05e0-496a-9885-d6ddfdb4e03e"
+ #define PACS_UUID_STR "00001850-0000-1000-8000-00805f9b34fb"
+@@ -1199,6 +1200,9 @@ static bool parse_base(struct bap_data *bap_data, struct bt_iso_base *base,
+ 				continue;
+ 			}
+ 
++			bass_add_stream(bap_data->device, meta, merged_caps,
++						qos, idx, bis_index);
++
+ 			/* Check if this BIS matches any local PAC */
+ 			bt_bap_verify_bis(bap_data->bap, bis_index,
+ 					merged_caps, &matched_lpac);
+@@ -3227,6 +3231,8 @@ static void bap_bcast_remove(struct btd_service *service)
+ 	free(req);
+ 
+ 	bap_data_remove(data);
++
++	bass_remove_stream(device);
+ }
+ 
+ static int bap_probe(struct btd_service *service)
+-- 
+2.45.2
+
+
+From a3f9970f7a8b62b426e7a00303ddb66acb79aadd Mon Sep 17 00:00:00 2001
+From: Iulia Tanasescu <iulia.tanasescu@nxp.com>
+Date: Tue, 16 Jul 2024 17:22:07 +0300
+Subject: [PATCH 29/46] client: Add assistant submenu
+
+This adds the initial implementation for the assistant menu in
+bluetoothctl, to detect and print MediaAssistant objects.
+
+The current BAP Broadcast Assistant implementation can be tested
+by running bluetoothctl, connecting to a BASS Server, scanning
+a Broadcast Source that is streaming a number of BISes with
+audio capabilities matching the capabilities of the peer device,
+and noticing the MediaAssistant objects being created:
+
+client/bluetoothctl
+[bluetooth]# [CHG] Controller 00:60:37:31:7E:3F Pairable: yes
+[bluetooth]# AdvertisementMonitor path registered
+[bluetooth]# scan on
+[bluetooth]# [NEW] Device 00:60:37:94:A6:A3 00-60-37-94-A6-A3
+[bluetooth]# connect 00:60:37:94:A6:A3
+Attempting to connect to 00:60:37:94:A6:A3
+[CHG] Device 00:60:37:94:A6:A3 Connected: yes
+[00-60-37-94-A6-A3]# Connection successful
+[00-60-37-94-A6-A3]# [NEW] Device 15:65:78:B6:52:F6 15-65-78-B6-52-F6
+[00-60-37-94-A6-A3]# [NEW] Assistant
+       /org/bluez/hci0/src_15_65_78_B6_52_F6/dev_00_60_37_94_A6_A3/bis1
+[00-60-37-94-A6-A3]# [NEW] Assistant
+       /org/bluez/hci0/src_15_65_78_B6_52_F6/dev_00_60_37_94_A6_A3/bis2
+[00-60-37-94-A6-A3]# scan off
+[00-60-37-94-A6-A3]# Diovery stopped
+[00-60-37-94-A6-A3]# disconnect
+Attempting to disconnect from 00:60:37:94:A6:A3
+[00-60-37-94-A6-A3]# Successful disconnected
+[CHG] Device 00:60:37:94:A6:A3 Connected: no
+[bluetooth]# [DEL] Assistant
+       /org/bluez/hci0/src_15_65_78_B6_52_F6/dev_00_60_37_94_A6_A3/bis1
+[bluetooth]# [DEL] Assistant
+       /org/bluez/hci0/src_15_65_78_B6_52_F6/dev_00_60_37_94_A6_A3/bis2
+---
+ Makefile.tools     |   3 +-
+ client/assistant.c | 164 +++++++++++++++++++++++++++++++++++++++++++++
+ client/assistant.h |  13 ++++
+ client/main.c      |   5 +-
+ 4 files changed, 183 insertions(+), 2 deletions(-)
+ create mode 100644 client/assistant.c
+ create mode 100644 client/assistant.h
+
+diff --git a/Makefile.tools b/Makefile.tools
+index 679c914bf8cd..f4f9e82dc7c4 100644
+--- a/Makefile.tools
++++ b/Makefile.tools
+@@ -13,7 +13,8 @@ client_bluetoothctl_SOURCES = client/main.c \
+ 					client/gatt.h client/gatt.c \
+ 					client/admin.h client/admin.c \
+ 					client/player.h client/player.c \
+-					client/mgmt.h client/mgmt.c
++					client/mgmt.h client/mgmt.c \
++					client/assistant.h client/assistant.c
+ client_bluetoothctl_LDADD = lib/libbluetooth-internal.la \
+ 			gdbus/libgdbus-internal.la src/libshared-glib.la \
+ 			$(GLIB_LIBS) $(DBUS_LIBS) -lreadline
+diff --git a/client/assistant.c b/client/assistant.c
+new file mode 100644
+index 000000000000..69a955c18655
+--- /dev/null
++++ b/client/assistant.c
+@@ -0,0 +1,164 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ *
++ *  BlueZ - Bluetooth protocol stack for Linux
++ *
++ *  Copyright 2024 NXP
++ *
++ *
++ */
++
++#ifdef HAVE_CONFIG_H
++#include <config.h>
++#endif
++
++#define _GNU_SOURCE
++#include <stdio.h>
++#include <stdbool.h>
++#include <inttypes.h>
++#include <errno.h>
++#include <unistd.h>
++#include <stdlib.h>
++#include <fcntl.h>
++#include <string.h>
++
++#include <glib.h>
++
++#include "gdbus/gdbus.h"
++
++#include "lib/bluetooth.h"
++#include "lib/uuid.h"
++
++#include "src/shared/util.h"
++#include "src/shared/shell.h"
++#include "src/shared/io.h"
++#include "src/shared/queue.h"
++#include "print.h"
++#include "assistant.h"
++
++/* String display constants */
++#define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
++#define COLORED_CHG	COLOR_YELLOW "CHG" COLOR_OFF
++#define COLORED_DEL	COLOR_RED "DEL" COLOR_OFF
++
++#define MEDIA_ASSISTANT_INTERFACE "org.bluez.MediaAssistant1"
++
++static DBusConnection *dbus_conn;
++
++static GList *assistants;
++
++static char *proxy_description(GDBusProxy *proxy, const char *title,
++						const char *description)
++{
++	const char *path;
++
++	path = g_dbus_proxy_get_path(proxy);
++
++	return g_strdup_printf("%s%s%s%s %s ",
++					description ? "[" : "",
++					description ? : "",
++					description ? "] " : "",
++					title, path);
++}
++
++static void print_assistant(GDBusProxy *proxy, const char *description)
++{
++	char *str;
++
++	str = proxy_description(proxy, "Assistant", description);
++
++	bt_shell_printf("%s\n", str);
++
++	g_free(str);
++}
++
++static void assistant_added(GDBusProxy *proxy)
++{
++	assistants = g_list_append(assistants, proxy);
++
++	print_assistant(proxy, COLORED_NEW);
++}
++
++static void proxy_added(GDBusProxy *proxy, void *user_data)
++{
++	const char *interface;
++
++	interface = g_dbus_proxy_get_interface(proxy);
++
++	if (!strcmp(interface, MEDIA_ASSISTANT_INTERFACE))
++		assistant_added(proxy);
++}
++
++static void assistant_removed(GDBusProxy *proxy)
++{
++	assistants = g_list_remove(assistants, proxy);
++
++	print_assistant(proxy, COLORED_DEL);
++}
++
++static void proxy_removed(GDBusProxy *proxy, void *user_data)
++{
++	const char *interface;
++
++	interface = g_dbus_proxy_get_interface(proxy);
++
++	if (!strcmp(interface, MEDIA_ASSISTANT_INTERFACE))
++		assistant_removed(proxy);
++}
++
++static void assistant_property_changed(GDBusProxy *proxy, const char *name,
++						DBusMessageIter *iter)
++{
++	char *str;
++
++	str = proxy_description(proxy, "Assistant", COLORED_CHG);
++	print_iter(str, name, iter);
++	g_free(str);
++}
++
++static void property_changed(GDBusProxy *proxy, const char *name,
++					DBusMessageIter *iter, void *user_data)
++{
++	const char *interface;
++
++	interface = g_dbus_proxy_get_interface(proxy);
++
++	if (!strcmp(interface, MEDIA_ASSISTANT_INTERFACE))
++		assistant_property_changed(proxy, name, iter);
++}
++
++static void assistant_unregister(void *data)
++{
++	GDBusProxy *proxy = data;
++
++	bt_shell_printf("Assistant %s unregistered\n",
++				g_dbus_proxy_get_path(proxy));
++}
++
++static void disconnect_handler(DBusConnection *connection, void *user_data)
++{
++	g_list_free_full(assistants, assistant_unregister);
++	assistants = NULL;
++}
++
++static GDBusClient * client;
++
++void assistant_add_submenu(void)
++{
++	dbus_conn = bt_shell_get_env("DBUS_CONNECTION");
++	if (!dbus_conn || client)
++		return;
++
++	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
++
++	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
++							property_changed, NULL);
++	g_dbus_client_set_disconnect_watch(client, disconnect_handler, NULL);
++}
++
++void assistant_remove_submenu(void)
++{
++	g_dbus_client_unref(client);
++	client = NULL;
++}
++
+diff --git a/client/assistant.h b/client/assistant.h
+new file mode 100644
+index 000000000000..418b0b84031f
+--- /dev/null
++++ b/client/assistant.h
+@@ -0,0 +1,13 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ *
++ *  BlueZ - Bluetooth protocol stack for Linux
++ *
++ *  Copyright 2024 NXP
++ *
++ *
++ */
++
++void assistant_add_submenu(void);
++void assistant_remove_submenu(void);
++
+diff --git a/client/main.c b/client/main.c
+index f012ddd436ad..a96a4263849d 100644
+--- a/client/main.c
++++ b/client/main.c
+@@ -4,7 +4,7 @@
+  *  BlueZ - Bluetooth protocol stack for Linux
+  *
+  *  Copyright (C) 2012  Intel Corporation. All rights reserved.
+- *
++ *  Copyright 2024 NXP
+  *
+  */
+ 
+@@ -34,6 +34,7 @@
+ #include "admin.h"
+ #include "player.h"
+ #include "mgmt.h"
++#include "assistant.h"
+ 
+ /* String display constants */
+ #define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
+@@ -3205,6 +3206,7 @@ int main(int argc, char *argv[])
+ 	admin_add_submenu();
+ 	player_add_submenu();
+ 	mgmt_add_submenu();
++	assistant_add_submenu();
+ 
+ 	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
+ 
+@@ -3222,6 +3224,7 @@ int main(int argc, char *argv[])
+ 	admin_remove_submenu();
+ 	player_remove_submenu();
+ 	mgmt_remove_submenu();
++	assistant_remove_submenu();
+ 
+ 	g_dbus_client_unref(client);
+ 
+-- 
+2.45.2
+
+
+From 4c9d4ed059b539c696e1ebcc92b0cb2522e48a2d Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Mon, 22 Jul 2024 11:58:39 -0400
+Subject: [PATCH 30/46] client/player: Set number of channels based on
+ locations
+
+This sets the number of channels based on the locations set rather than
+always hardcoding it to 3 which in certain case is incorrect and can
+lead for the same location to be configured multiple times.
+---
+ client/player.c | 19 ++++++++++++-------
+ 1 file changed, 12 insertions(+), 7 deletions(-)
+
+diff --git a/client/player.c b/client/player.c
+index 5b0b918fb8d7..9334a053d34d 100644
+--- a/client/player.c
++++ b/client/player.c
+@@ -1140,10 +1140,9 @@ static DBusMessage *endpoint_set_configuration(DBusConnection *conn,
+ 		.meta = _meta, \
+ 	}
+ 
+-#define LC3_DATA(_freq, _duration, _chan_count, _len_min, _len_max) \
++#define LC3_DATA(_freq, _duration, _len_min, _len_max) \
+ 	UTIL_IOV_INIT(0x03, LC3_FREQ, _freq, _freq >> 8, \
+ 			0x02, LC3_DURATION, _duration, \
+-			0x02, LC3_CHAN_COUNT, _chan_count, \
+ 			0x05, LC3_FRAME_LEN, _len_min, _len_min >> 8, \
+ 			_len_max, _len_max >> 8)
+ 
+@@ -1182,11 +1181,10 @@ static const struct capabilities {
+ 	 *
+ 	 * Frequencies: 8Khz 11Khz 16Khz 22Khz 24Khz 32Khz 44.1Khz 48Khz
+ 	 * Duration: 7.5 ms 10 ms
+-	 * Channel count: 3
+ 	 * Frame length: 26-240
+ 	 */
+ 	CODEC_CAPABILITIES("pac_snk/lc3", PAC_SINK_UUID, LC3_ID,
+-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
++				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 26,
+ 					240),
+ 				UTIL_IOV_INIT()),
+ 
+@@ -1198,7 +1196,7 @@ static const struct capabilities {
+ 	 * Frame length: 26-240
+ 	 */
+ 	CODEC_CAPABILITIES("pac_src/lc3", PAC_SOURCE_UUID, LC3_ID,
+-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
++				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 26,
+ 					240),
+ 				UTIL_IOV_INIT()),
+ 
+@@ -1210,7 +1208,7 @@ static const struct capabilities {
+ 	 * Frame length: 26-240
+ 	 */
+ 	CODEC_CAPABILITIES("bcaa/lc3", BCAA_SERVICE_UUID, LC3_ID,
+-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
++				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 26,
+ 					240),
+ 				UTIL_IOV_INIT()),
+ 
+@@ -1222,7 +1220,7 @@ static const struct capabilities {
+ 	 * Frame length: 26-240
+ 	 */
+ 	CODEC_CAPABILITIES("baa/lc3", BAA_SERVICE_UUID, LC3_ID,
+-				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 3u, 26,
++				LC3_DATA(LC3_FREQ_ANY, LC3_DURATION_ANY, 26,
+ 					240),
+ 				UTIL_IOV_INIT()),
+ };
+@@ -3220,6 +3218,7 @@ static void endpoint_locations(const char *input, void *user_data)
+ 	struct endpoint *ep = user_data;
+ 	char *endptr = NULL;
+ 	int value;
++	uint8_t channels;
+ 
+ 	value = strtol(input, &endptr, 0);
+ 
+@@ -3230,6 +3229,12 @@ static void endpoint_locations(const char *input, void *user_data)
+ 
+ 	ep->locations = value;
+ 
++	channels = __builtin_popcount(value);
++	/* Automatically set LC3_CHAN_COUNT if only 1 location is supported */
++	if (channels == 1)
++		util_ltv_push(ep->caps, sizeof(channels), LC3_CHAN_COUNT,
++				&channels);
++
+ 	bt_shell_prompt_input(ep->path, "Supported Context (value):",
+ 				endpoint_supported_context, ep);
+ }
+-- 
+2.45.2
+
+
+From c2312ebe318413f9e72df505fa236024b57429d4 Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Fri, 19 Jul 2024 15:52:29 -0400
+Subject: [PATCH 31/46] client/player: Add support to enter alternative preset
+
+This adds support for alternative preset to be entered so when auto
+accepting configuration a different preset can be selected following the
+order given to endpoint.presets.
+---
+ client/player.c | 120 ++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 101 insertions(+), 19 deletions(-)
+
+diff --git a/client/player.c b/client/player.c
+index 9334a053d34d..3c3587f2ca3a 100644
+--- a/client/player.c
++++ b/client/player.c
+@@ -1230,7 +1230,10 @@ struct codec_preset {
+ 	const struct iovec data;
+ 	struct bt_bap_qos qos;
+ 	uint8_t target_latency;
++	uint32_t chan_alloc;
+ 	bool custom;
++	bool alt;
++	struct codec_preset *alt_preset;
+ };
+ 
+ #define SBC_PRESET(_name, _data) \
+@@ -1969,12 +1972,31 @@ static int parse_chan_alloc(DBusMessageIter *iter, uint32_t *location,
+ 			if (*channels)
+ 				*channels = __builtin_popcount(*location);
+ 			return 0;
++		} else if (!strcasecmp(key, "Locations")) {
++			uint32_t tmp;
++
++			if (var != DBUS_TYPE_UINT32)
++				return -EINVAL;
++
++			dbus_message_iter_get_basic(&value, &tmp);
++			*location &= tmp;
++
++			if (*channels)
++				*channels = __builtin_popcount(*location);
+ 		}
+ 
+ 		dbus_message_iter_next(iter);
+ 	}
+ 
+-	return -EINVAL;
++	return *location ? 0 : -EINVAL;
++}
++
++static void ltv_find(size_t i, uint8_t l, uint8_t t, uint8_t *v,
++					void *user_data)
++{
++	bool *found = user_data;
++
++	*found = true;
+ }
+ 
+ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
+@@ -1985,7 +2007,7 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
+ 	DBusMessageIter iter, props;
+ 	struct endpoint_config *cfg;
+ 	struct bt_bap_io_qos *qos;
+-	uint32_t location = 0;
++	uint32_t location = ep->locations;
+ 	uint8_t channels = 1;
+ 
+ 	if (!preset)
+@@ -2006,13 +2028,44 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
+ 	dbus_message_iter_recurse(&iter, &props);
+ 
+ 	if (!parse_chan_alloc(&props, &location, &channels)) {
+-		uint8_t chan_alloc_ltv[] = {
+-			0x05, LC3_CONFIG_CHAN_ALLOC, location & 0xff,
+-			location >> 8, location >> 16, location >> 24
+-		};
++		uint32_t chan_alloc = 0;
++		uint8_t type = LC3_CONFIG_CHAN_ALLOC;
++		bool found = false;
++
++		if (preset->chan_alloc & location)
++			chan_alloc = preset->chan_alloc & location;
++		else if (preset->alt_preset &&
++					preset->alt_preset->chan_alloc &
++					location) {
++			chan_alloc = preset->alt_preset->chan_alloc & location;
++			preset = preset->alt_preset;
++
++			/* Copy alternate capabilities */
++			util_iov_free(cfg->caps, 1);
++			cfg->caps = util_iov_dup(&preset->data, 1);
++			cfg->target_latency = preset->target_latency;
++		} else
++			chan_alloc = location;
++
++		/* Check if Channel Allocation is present in caps */
++		util_ltv_foreach(cfg->caps->iov_base, cfg->caps->iov_len,
++					&type, ltv_find, &found);
+ 
+-		util_iov_append(cfg->caps, &chan_alloc_ltv,
++		/* If Channel Allocation has not been set directly via
++		 * preset->data then attempt to set it if chan_alloc has been
++		 * set.
++		 */
++		if (!found && chan_alloc) {
++			uint8_t chan_alloc_ltv[] = {
++				0x05, LC3_CONFIG_CHAN_ALLOC, chan_alloc & 0xff,
++				chan_alloc >> 8, chan_alloc >> 16,
++				chan_alloc >> 24
++			};
++
++			put_le32(chan_alloc, &chan_alloc_ltv[2]);
++			util_iov_append(cfg->caps, &chan_alloc_ltv,
+ 						sizeof(chan_alloc_ltv));
++		}
+ 	}
+ 
+ 	/* Copy metadata */
+@@ -2035,6 +2088,8 @@ static DBusMessage *endpoint_select_properties_reply(struct endpoint *ep,
+ 
+ 	dbus_message_iter_init_append(reply, &iter);
+ 
++	bt_shell_printf("selecting %s...\n", preset->name);
++
+ 	append_properties(&iter, cfg);
+ 
+ 	free(cfg);
+@@ -2098,8 +2153,6 @@ static DBusMessage *endpoint_select_properties(DBusConnection *conn,
+ 	if (!reply)
+ 		return NULL;
+ 
+-	bt_shell_printf("Auto Accepting using %s...\n", p->name);
+-
+ 	return reply;
+ }
+ 
+@@ -3621,14 +3674,6 @@ add_meta:
+ 			endpoint_set_metadata_cfg, cfg);
+ }
+ 
+-static void ltv_find(size_t i, uint8_t l, uint8_t t, uint8_t *v,
+-					void *user_data)
+-{
+-	bool *found = user_data;
+-
+-	*found = true;
+-}
+-
+ static void config_endpoint_iso_group(const char *input, void *user_data)
+ {
+ 	struct endpoint_config *cfg = user_data;
+@@ -4106,13 +4151,38 @@ static void print_presets(struct preset *preset)
+ 
+ 	for (i = 0; i < preset->num_presets; i++) {
+ 		p = &preset->presets[i];
+-		bt_shell_printf("%s%s\n", p == preset->default_preset ?
+-						"*" : "", p->name);
++
++		if (p == preset->default_preset)
++			bt_shell_printf("*%s\n", p->name);
++		else if (preset->default_preset &&
++					p == preset->default_preset->alt_preset)
++			bt_shell_printf("**%s\n", p->name);
++		else
++			bt_shell_printf("%s\n", p->name);
+ 	}
+ 
+ 	queue_foreach(preset->custom, foreach_custom_preset_print, preset);
+ }
+ 
++static void custom_chan_alloc(const char *input, void *user_data)
++{
++	struct codec_preset *p = user_data;
++	char *endptr = NULL;
++
++	p->chan_alloc = strtol(input, &endptr, 0);
++	if (!endptr || *endptr != '\0') {
++		bt_shell_printf("Invalid argument: %s\n", input);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	if (p->alt_preset)
++		bt_shell_prompt_input(p->alt_preset->name,
++					"Enter Channel Allocation: ",
++					custom_chan_alloc, p->alt_preset);
++	else
++		return bt_shell_noninteractive_quit(EXIT_SUCCESS);
++}
++
+ static void cmd_presets_endpoint(int argc, char *argv[])
+ {
+ 	struct preset *preset;
+@@ -4133,8 +4203,20 @@ static void cmd_presets_endpoint(int argc, char *argv[])
+ 		preset->default_preset = default_preset;
+ 
+ 		if (argc > 4) {
++			struct codec_preset *alt_preset;
+ 			struct iovec *iov = (void *)&default_preset->data;
+ 
++			/* Check if and alternative preset was given */
++			alt_preset = preset_find_name(preset, argv[4]);
++			if (alt_preset) {
++				default_preset->alt_preset = alt_preset;
++				bt_shell_prompt_input(default_preset->name,
++						"Enter Channel Allocation: ",
++						custom_chan_alloc,
++						default_preset);
++				return;
++			}
++
+ 			iov->iov_base = str2bytearray(argv[4], &iov->iov_len);
+ 			if (!iov->iov_base) {
+ 				bt_shell_printf("Invalid configuration %s\n",
+-- 
+2.45.2
+
+
+From fcf39175e35ef086ffbe4e84ed6dcd3bf4c0aeea Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Tue, 23 Jul 2024 15:49:58 -0400
+Subject: [PATCH 32/46] shared/bap: Fix bt_bap_select with multiple lpacs
+
+When there are multiple local PAC records of the same codec with
+different locations only the first was consider, also bt_bap_select
+would stop doing location matching early if the location don't match
+without considering there could be more remote channels.
+---
+ src/shared/bap.c | 35 ++++++++++++++++++++++++++---------
+ 1 file changed, 26 insertions(+), 9 deletions(-)
+
+diff --git a/src/shared/bap.c b/src/shared/bap.c
+index 0aa89c2781ba..499e740c9162 100644
+--- a/src/shared/bap.c
++++ b/src/shared/bap.c
+@@ -3249,25 +3249,32 @@ static void *ltv_merge(struct iovec *data, struct iovec *cont)
+ 	return util_iov_append(data, cont->iov_base, cont->iov_len);
+ }
+ 
+-static void bap_pac_foreach_channel(size_t i, uint8_t l, uint8_t t, uint8_t *v,
+-					void *user_data)
++static void bap_pac_chan_add(struct bt_bap_pac *pac, uint8_t count,
++				uint32_t location)
+ {
+-	struct bt_bap_pac *pac = user_data;
+ 	struct bt_bap_chan *chan;
+ 
+-	if (!v)
+-		return;
+-
+ 	if (!pac->channels)
+ 		pac->channels = queue_new();
+ 
+ 	chan = new0(struct bt_bap_chan, 1);
+-	chan->count = *v;
+-	chan->location = bt_bap_pac_get_locations(pac) ? : pac->qos.location;
++	chan->count = count;
++	chan->location = location;
+ 
+ 	queue_push_tail(pac->channels, chan);
+ }
+ 
++static void bap_pac_foreach_channel(size_t i, uint8_t l, uint8_t t, uint8_t *v,
++					void *user_data)
++{
++	struct bt_bap_pac *pac = user_data;
++
++	if (!v)
++		return;
++
++	bap_pac_chan_add(pac, *v, bt_bap_pac_get_locations(pac));
++}
++
+ static void bap_pac_update_channels(struct bt_bap_pac *pac, struct iovec *data)
+ {
+ 	uint8_t type = 0x03;
+@@ -3277,6 +3284,13 @@ static void bap_pac_update_channels(struct bt_bap_pac *pac, struct iovec *data)
+ 
+ 	util_ltv_foreach(data->iov_base, data->iov_len, &type,
+ 				bap_pac_foreach_channel, pac);
++
++	/* If record didn't set a channel count but set a location use that as
++	 * channel count.
++	 */
++	if (queue_isempty(pac->channels) && pac->qos.location)
++		bap_pac_chan_add(pac, pac->qos.location, pac->qos.location);
++
+ }
+ 
+ static void bap_pac_merge(struct bt_bap_pac *pac, struct iovec *data,
+@@ -3607,6 +3621,9 @@ uint32_t bt_bap_pac_get_locations(struct bt_bap_pac *pac)
+ 	if (!pac)
+ 		return 0;
+ 
++	if (pac->qos.location)
++		return pac->qos.location;
++
+ 	pacs = pac->bdb->pacs;
+ 
+ 	switch (pac->type) {
+@@ -5411,7 +5428,7 @@ int bt_bap_select(struct bt_bap_pac *lpac, struct bt_bap_pac *rpac,
+ 
+ 			/* Try matching the channel location */
+ 			if (!(map.location & rc->location))
+-				break;
++				continue;
+ 
+ 			lpac->ops->select(lpac, rpac, map.location &
+ 						rc->location, &rpac->qos,
+-- 
+2.45.2
+
+
+From 549d38852f665d8251b2c0c0e8c9f3d5574ac99b Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Mon, 29 Jul 2024 12:37:36 +0100
+Subject: [PATCH 33/46] client/player: Fix not setting config target_latency
+ with edpoint.config
+
+This fixes not setting target_latency with endpoint.config command.
+---
+ client/player.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/client/player.c b/client/player.c
+index 3c3587f2ca3a..93d6b62e24bf 100644
+--- a/client/player.c
++++ b/client/player.c
+@@ -1790,9 +1790,9 @@ static void append_ucast_qos(DBusMessageIter *iter, struct endpoint_config *cfg)
+ 					DBUS_TYPE_UINT32, &qos->delay);
+ 
+ 	if (cfg->target_latency) {
+-		bt_shell_printf("TargetLatency 0x%02x\n", qos->target_latency);
++		bt_shell_printf("TargetLatency 0x%02x\n", cfg->target_latency);
+ 		g_dbus_dict_append_entry(iter, "TargetLatency", DBUS_TYPE_BYTE,
+-					&qos->target_latency);
++					&cfg->target_latency);
+ 	}
+ 
+ 	append_io_qos(iter, &qos->io_qos);
+@@ -3765,6 +3765,7 @@ static void cmd_config_endpoint(int argc, char *argv[])
+ 		/* Copy capabilities */
+ 		util_iov_append(cfg->caps, preset->data.iov_base,
+ 				preset->data.iov_len);
++		cfg->target_latency = preset->target_latency;
+ 
+ 		/* Set QoS parameters */
+ 		cfg->qos = preset->qos;
+@@ -3960,7 +3961,7 @@ static void custom_target_latency(const char *input, void *user_data)
+ 	else if (!strcasecmp(input, "Balance"))
+ 		p->target_latency = 0x02;
+ 	else if (!strcasecmp(input, "High"))
+-		p->target_latency = 0x02;
++		p->target_latency = 0x03;
+ 	else {
+ 		char *endptr = NULL;
+ 
+-- 
+2.45.2
+
+
+From d7b7f3a39562ca6341254a711ce079b6b8185cd1 Mon Sep 17 00:00:00 2001
+From: Vlad Pruteanu <vlad.pruteanu@nxp.com>
+Date: Wed, 31 Jul 2024 09:17:06 +0300
+Subject: [PATCH 34/46] doc/media: Add 'broadcasting' state and 'Select' method
+
+This adds a new state for transports created by the Broadcast
+Sink. Such transports will remain  in the 'idle' state until the
+user calls 'Select' on them, at which point they will be moved to
+'broadcasting'. This allows the user to select the desired BIS as
+the audio server automatically acquires transports that are in this
+state.
+---
+ doc/org.bluez.MediaTransport.rst | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/doc/org.bluez.MediaTransport.rst b/doc/org.bluez.MediaTransport.rst
+index 6e95df8f2ee8..c8aca0223d24 100644
+--- a/doc/org.bluez.MediaTransport.rst
++++ b/doc/org.bluez.MediaTransport.rst
+@@ -7,7 +7,7 @@ BlueZ D-Bus MediaTransport API documentation
+ --------------------------------------------
+ 
+ :Version: BlueZ
+-:Date: September 2023
++:Date: July 2024
+ :Manual section: 5
+ :Manual group: Linux System Administration
+ 
+@@ -51,6 +51,20 @@ void Release()
+ 
+ 	Releases file descriptor.
+ 
++void Select()
++`````````````
++
++	Applicable only for transports created by a broadcast sink. This moves
++	the transport from 'idle' to 'broadcasting'. This allows the user to
++	select which BISes he wishes to sync to via a 2 step process:
++	1) the user calls this method, changing the transport's state to idle
++	2) the audio server detects that the transport is in the 'broadcasting'
++	state and automatically acquires it
++
++	Possible Errors:
++
++	:org.bluez.Error.NotAuthorized:
++
+ Properties
+ ----------
+ 
+@@ -84,6 +98,8 @@ string State [readonly]
+ 
+ 	:"idle": not streaming
+ 	:"pending": streaming but not acquired
++	:"broadcasting": streaming but not acquired, applicable only for transports
++		created by a broadcast sink
+ 	:"active": streaming and acquired
+ 
+ uint16 Delay [readwrite, optional]
+-- 
+2.45.2
+
+
+From 9357edb87bb98c74677f4c5548a4fe2d589230f8 Mon Sep 17 00:00:00 2001
+From: Vlad Pruteanu <vlad.pruteanu@nxp.com>
+Date: Wed, 31 Jul 2024 09:17:07 +0300
+Subject: [PATCH 35/46] transport: Add 'broadcasting' state
+
+This adds a new state for transports created by the Broadcast
+Sink device as a result of scanning a Broadcast Source. Such
+transports will remain  in the 'idle' state until the user
+selects them using 'transport.select', at which point they will
+be moved to 'broadcasting'.
+---
+ profiles/audio/transport.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/profiles/audio/transport.c b/profiles/audio/transport.c
+index 922911cf3fbc..0a890c0ac5f7 100644
+--- a/profiles/audio/transport.c
++++ b/profiles/audio/transport.c
+@@ -51,6 +51,10 @@
+ typedef enum {
+ 	TRANSPORT_STATE_IDLE,		/* Not acquired and suspended */
+ 	TRANSPORT_STATE_PENDING,	/* Playing but not acquired */
++	/* Playing but not acquired, applicable only for transports
++	 * created by a broadcast sink
++	 */
++	TRANSPORT_STATE_BROADCASTING,
+ 	TRANSPORT_STATE_REQUESTING,	/* Acquire in progress */
+ 	TRANSPORT_STATE_ACTIVE,		/* Acquired and playing */
+ 	TRANSPORT_STATE_SUSPENDING,     /* Release in progress */
+@@ -59,6 +63,7 @@ typedef enum {
+ static const char *str_state[] = {
+ 	"TRANSPORT_STATE_IDLE",
+ 	"TRANSPORT_STATE_PENDING",
++	"TRANSPORT_STATE_BROADCASTING",
+ 	"TRANSPORT_STATE_REQUESTING",
+ 	"TRANSPORT_STATE_ACTIVE",
+ 	"TRANSPORT_STATE_SUSPENDING",
+@@ -139,6 +144,8 @@ static const char *state2str(transport_state_t state)
+ 		return "idle";
+ 	case TRANSPORT_STATE_PENDING:
+ 		return "pending";
++	case TRANSPORT_STATE_BROADCASTING:
++		return "broadcasting";
+ 	case TRANSPORT_STATE_ACTIVE:
+ 	case TRANSPORT_STATE_SUSPENDING:
+ 		return "active";
+@@ -152,6 +159,7 @@ static gboolean state_in_use(transport_state_t state)
+ 	switch (state) {
+ 	case TRANSPORT_STATE_IDLE:
+ 	case TRANSPORT_STATE_PENDING:
++	case TRANSPORT_STATE_BROADCASTING:
+ 		return FALSE;
+ 	case TRANSPORT_STATE_REQUESTING:
+ 	case TRANSPORT_STATE_ACTIVE:
+@@ -679,7 +687,8 @@ static DBusMessage *try_acquire(DBusConnection *conn, DBusMessage *msg,
+ 	if (transport->state >= TRANSPORT_STATE_REQUESTING)
+ 		return btd_error_not_authorized(msg);
+ 
+-	if (transport->state != TRANSPORT_STATE_PENDING)
++	if ((transport->state != TRANSPORT_STATE_PENDING) &&
++		(transport->state != TRANSPORT_STATE_BROADCASTING))
+ 		return btd_error_not_available(msg);
+ 
+ 	owner = media_owner_create(msg);
+@@ -1281,7 +1290,8 @@ static void transport_update_playing(struct media_transport *transport,
+ 					str_state[transport->state], playing);
+ 
+ 	if (playing == FALSE) {
+-		if (transport->state == TRANSPORT_STATE_PENDING)
++		if ((transport->state == TRANSPORT_STATE_PENDING) ||
++			(transport->state == TRANSPORT_STATE_BROADCASTING))
+ 			transport_set_state(transport, TRANSPORT_STATE_IDLE);
+ 		else if (transport->state == TRANSPORT_STATE_ACTIVE) {
+ 			/* Remove owner */
+-- 
+2.45.2
+
+
+From 083d1a7b66b5c495d2545670d5d255aef340dbf9 Mon Sep 17 00:00:00 2001
+From: Vlad Pruteanu <vlad.pruteanu@nxp.com>
+Date: Wed, 31 Jul 2024 09:17:08 +0300
+Subject: [PATCH 36/46] transport: Add 'Select' method
+
+This adds the 'Select' method for Broadcast transports. It's role
+is to change the transport's state from idle to broadcasting. This
+allows the user to select the desired stream when running the setup
+with PipeWire since it acquires any transport that is broadcasting.
+---
+ profiles/audio/transport.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/profiles/audio/transport.c b/profiles/audio/transport.c
+index 0a890c0ac5f7..bf2215a0f725 100644
+--- a/profiles/audio/transport.c
++++ b/profiles/audio/transport.c
+@@ -972,6 +972,9 @@ static gboolean get_endpoint(const GDBusPropertyTable *property,
+ 	return TRUE;
+ }
+ 
++static DBusMessage *select_transport(DBusConnection *conn, DBusMessage *msg,
++					void *data);
++
+ static const GDBusMethodTable transport_methods[] = {
+ 	{ GDBUS_ASYNC_METHOD("Acquire",
+ 			NULL,
+@@ -984,6 +987,8 @@ static const GDBusMethodTable transport_methods[] = {
+ 							{ "mtu_w", "q" }),
+ 			try_acquire) },
+ 	{ GDBUS_ASYNC_METHOD("Release", NULL, NULL, release) },
++	{ GDBUS_ASYNC_METHOD("Select",
++			NULL, NULL, select_transport) },
+ 	{ },
+ };
+ 
+@@ -1302,6 +1307,25 @@ static void transport_update_playing(struct media_transport *transport,
+ 		transport_set_state(transport, TRANSPORT_STATE_PENDING);
+ }
+ 
++static DBusMessage *select_transport(DBusConnection *conn, DBusMessage *msg,
++					void *data)
++{
++	struct media_transport *transport = data;
++
++	if (transport->owner != NULL)
++		return btd_error_not_authorized(msg);
++
++	if (transport->state >= TRANSPORT_STATE_REQUESTING)
++		return btd_error_not_authorized(msg);
++
++	if (!strcmp(media_endpoint_get_uuid(transport->endpoint),
++						BAA_SERVICE_UUID)) {
++		transport_update_playing(transport, TRUE);
++	}
++
++	return NULL;
++}
++
+ static void sink_state_changed(struct btd_service *service,
+ 						sink_state_t old_state,
+ 						sink_state_t new_state,
+-- 
+2.45.2
+
+
+From 61e16e3b831754368599fc619ddac31f0db48571 Mon Sep 17 00:00:00 2001
+From: Vlad Pruteanu <vlad.pruteanu@nxp.com>
+Date: Wed, 31 Jul 2024 09:17:09 +0300
+Subject: [PATCH 37/46] client/player: Expose transport 'Select' method to the
+ user
+
+This exposes the 'Select' method for Broadcast transports. This
+allows the user to select the desired stream when running the setup
+with PipeWire since it acquires any transport that is broadcasting.
+---
+ client/player.c | 52 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 52 insertions(+)
+
+diff --git a/client/player.c b/client/player.c
+index 93d6b62e24bf..c36e7ff4851b 100644
+--- a/client/player.c
++++ b/client/player.c
+@@ -4766,6 +4766,23 @@ static void acquire_reply(DBusMessage *message, void *user_data)
+ 	return bt_shell_noninteractive_quit(EXIT_FAILURE);
+ }
+ 
++static void select_reply(DBusMessage *message, void *user_data)
++{
++	DBusError error;
++
++	dbus_error_init(&error);
++
++	if (dbus_set_error_from_message(&error, message) == TRUE) {
++		bt_shell_printf("Failed to select: %s\n", error.name);
++		dbus_error_free(&error);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	bt_shell_printf("Select successful");
++
++	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
++}
++
+ static void prompt_acquire(const char *input, void *user_data)
+ {
+ 	GDBusProxy *proxy = user_data;
+@@ -4987,6 +5004,38 @@ static void cmd_acquire_transport(int argc, char *argv[])
+ 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+ }
+ 
++static void transport_select(GDBusProxy *proxy, bool prompt)
++{
++	if (!g_dbus_proxy_method_call(proxy, "Select", NULL,
++					select_reply, proxy, NULL)) {
++		bt_shell_printf("Failed select transport\n");
++		return;
++	}
++}
++
++static void cmd_select_transport(int argc, char *argv[])
++{
++	GDBusProxy *proxy;
++	int i;
++
++	for (i = 1; i < argc; i++) {
++		proxy = g_dbus_proxy_lookup(transports, NULL, argv[i],
++					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
++		if (!proxy) {
++			bt_shell_printf("Transport %s not found\n", argv[i]);
++			return bt_shell_noninteractive_quit(EXIT_FAILURE);
++		}
++
++		if (find_transport(proxy)) {
++			bt_shell_printf("Transport %s already acquired\n",
++					argv[i]);
++			return bt_shell_noninteractive_quit(EXIT_FAILURE);
++		}
++
++		transport_select(proxy, false);
++	}
++}
++
+ static void release_reply(DBusMessage *message, void *user_data)
+ {
+ 	struct transport *transport = user_data;
+@@ -5415,6 +5464,9 @@ static const struct bt_shell_menu transport_menu = {
+ 	{ "volume",      "<transport> [value]",	cmd_volume_transport,
+ 						"Get/Set transport volume",
+ 						transport_generator },
++	{ "select",      "<transport> [transport1...]", cmd_select_transport,
++						"Select Transport",
++						transport_generator },
+ 	{} },
+ };
+ 
+-- 
+2.45.2
+
+
+From 53a4078cb350f630b19f7fe6ea32dd4e1c01b7bb Mon Sep 17 00:00:00 2001
+From: Vlad Pruteanu <vlad.pruteanu@nxp.com>
+Date: Wed, 31 Jul 2024 09:17:10 +0300
+Subject: [PATCH 38/46] transport: Broadcast sink: wait for user to select
+ transport
+
+This changes the flow for transports created on broadcast sink side.
+Transports are not automatically changed to pending anymore, instead
+the user must first run transport.select on them which updates the
+state to 'broadcasting'. This allows for the selection of the desired
+stream when running the setup with PipeWire, which acquires any transport
+that is broadcasting.
+---
+ profiles/audio/transport.c | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/profiles/audio/transport.c b/profiles/audio/transport.c
+index bf2215a0f725..80e4f564c861 100644
+--- a/profiles/audio/transport.c
++++ b/profiles/audio/transport.c
+@@ -1303,8 +1303,14 @@ static void transport_update_playing(struct media_transport *transport,
+ 			if (transport->owner != NULL)
+ 				media_transport_remove_owner(transport);
+ 		}
+-	} else if (transport->state == TRANSPORT_STATE_IDLE)
+-		transport_set_state(transport, TRANSPORT_STATE_PENDING);
++	} else if (transport->state == TRANSPORT_STATE_IDLE) {
++		if (!strcmp(media_endpoint_get_uuid(transport->endpoint),
++						BAA_SERVICE_UUID))
++			transport_set_state(transport,
++						TRANSPORT_STATE_BROADCASTING);
++		else
++			transport_set_state(transport, TRANSPORT_STATE_PENDING);
++	}
+ }
+ 
+ static DBusMessage *select_transport(DBusConnection *conn, DBusMessage *msg,
+@@ -1686,10 +1692,7 @@ static void bap_state_changed(struct bt_bap_stream *stream, uint8_t old_state,
+ 			bap_update_qos(transport);
+ 		else if (bt_bap_stream_io_dir(stream) != BT_BAP_BCAST_SOURCE)
+ 			bap_update_bcast_qos(transport);
+-		if (bt_bap_stream_io_dir(stream) == BT_BAP_BCAST_SOURCE)
+-			transport_update_playing(transport, TRUE);
+-		else
+-			transport_update_playing(transport, FALSE);
++		transport_update_playing(transport, FALSE);
+ 		return;
+ 	case BT_BAP_STREAM_STATE_DISABLING:
+ 		return;
+-- 
+2.45.2
+
+
+From c7e79fa8bfffff1c7b76cd32ff925ab4613ceb45 Mon Sep 17 00:00:00 2001
+From: Vlad Pruteanu <vlad.pruteanu@nxp.com>
+Date: Wed, 31 Jul 2024 09:17:11 +0300
+Subject: [PATCH 39/46] doc/media: Add 'Unselect' method
+
+This adds the documentation for a new method, exclusive to transports
+created by the Broadcast Sink. It would allow the user to terminate the
+sync to a BIS, via a 2 step process. The first step is the call to this
+method, which changes the transport's state to idle, with the second step
+being done by the audio server which detects this change and releases
+the transport.
+---
+ doc/org.bluez.MediaTransport.rst | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/doc/org.bluez.MediaTransport.rst b/doc/org.bluez.MediaTransport.rst
+index c8aca0223d24..eb3e04ae25c6 100644
+--- a/doc/org.bluez.MediaTransport.rst
++++ b/doc/org.bluez.MediaTransport.rst
+@@ -57,7 +57,7 @@ void Select()
+ 	Applicable only for transports created by a broadcast sink. This moves
+ 	the transport from 'idle' to 'broadcasting'. This allows the user to
+ 	select which BISes he wishes to sync to via a 2 step process:
+-	1) the user calls this method, changing the transport's state to idle
++	1) the user calls the method, changing the transport's state to broadcasting
+ 	2) the audio server detects that the transport is in the 'broadcasting'
+ 	state and automatically acquires it
+ 
+@@ -65,6 +65,19 @@ void Select()
+ 
+ 	:org.bluez.Error.NotAuthorized:
+ 
++void Unselect()
++```````````````
++
++	Applicable only for transports created by a broadcast sink. This moves
++	the transport from 'broadcasting' or 'active' to 'idle'. This allows the
++	user to terminate the sync to a BIS to via a 2 step process:
++	1) the user calls this method, changing the transport's state to idle
++	2) the audio server detects this event and releases the transport
++
++	Possible Errors:
++
++	:org.bluez.Error.NotAuthorized:
++
+ Properties
+ ----------
+ 
+-- 
+2.45.2
+
+
+From 6ee75c3ec383c664cd7e7be02e951999758a6c4f Mon Sep 17 00:00:00 2001
+From: Vlad Pruteanu <vlad.pruteanu@nxp.com>
+Date: Wed, 31 Jul 2024 09:17:12 +0300
+Subject: [PATCH 40/46] transport: Add 'Unselect' method
+
+This adds a new method, exclusive to transports created by the Broadcast
+Sink. It allows the user to terminate the sync to a BIS, via a 2 step
+process. The first step is the call to this method, which changes the
+transport's state to idle, with the second step being done by the audio
+server which detects this change and releases the transport.
+---
+ profiles/audio/transport.c | 41 +++++++++++++++++++++++++++++++-------
+ 1 file changed, 34 insertions(+), 7 deletions(-)
+
+diff --git a/profiles/audio/transport.c b/profiles/audio/transport.c
+index 80e4f564c861..3001457943ac 100644
+--- a/profiles/audio/transport.c
++++ b/profiles/audio/transport.c
+@@ -975,6 +975,9 @@ static gboolean get_endpoint(const GDBusPropertyTable *property,
+ static DBusMessage *select_transport(DBusConnection *conn, DBusMessage *msg,
+ 					void *data);
+ 
++static DBusMessage *unselect_transport(DBusConnection *conn, DBusMessage *msg,
++					void *data);
++
+ static const GDBusMethodTable transport_methods[] = {
+ 	{ GDBUS_ASYNC_METHOD("Acquire",
+ 			NULL,
+@@ -989,6 +992,8 @@ static const GDBusMethodTable transport_methods[] = {
+ 	{ GDBUS_ASYNC_METHOD("Release", NULL, NULL, release) },
+ 	{ GDBUS_ASYNC_METHOD("Select",
+ 			NULL, NULL, select_transport) },
++	{ GDBUS_ASYNC_METHOD("Unselect",
++			NULL, NULL, unselect_transport) },
+ 	{ },
+ };
+ 
+@@ -1295,13 +1300,22 @@ static void transport_update_playing(struct media_transport *transport,
+ 					str_state[transport->state], playing);
+ 
+ 	if (playing == FALSE) {
+-		if ((transport->state == TRANSPORT_STATE_PENDING) ||
+-			(transport->state == TRANSPORT_STATE_BROADCASTING))
+-			transport_set_state(transport, TRANSPORT_STATE_IDLE);
+-		else if (transport->state == TRANSPORT_STATE_ACTIVE) {
+-			/* Remove owner */
+-			if (transport->owner != NULL)
+-				media_transport_remove_owner(transport);
++		if (!strcmp(media_endpoint_get_uuid(transport->endpoint),
++						BCAA_SERVICE_UUID)) {
++			if ((transport->state ==
++				TRANSPORT_STATE_BROADCASTING) ||
++				(transport->state == TRANSPORT_STATE_ACTIVE))
++				transport_set_state(transport,
++						TRANSPORT_STATE_IDLE);
++		} else {
++			if (transport->state == TRANSPORT_STATE_PENDING)
++				transport_set_state(transport,
++						TRANSPORT_STATE_IDLE);
++			else if (transport->state == TRANSPORT_STATE_ACTIVE) {
++				/* Remove owner */
++				if (transport->owner != NULL)
++					media_transport_remove_owner(transport);
++			}
+ 		}
+ 	} else if (transport->state == TRANSPORT_STATE_IDLE) {
+ 		if (!strcmp(media_endpoint_get_uuid(transport->endpoint),
+@@ -1332,6 +1346,19 @@ static DBusMessage *select_transport(DBusConnection *conn, DBusMessage *msg,
+ 	return NULL;
+ }
+ 
++static DBusMessage *unselect_transport(DBusConnection *conn, DBusMessage *msg,
++					void *data)
++{
++	struct media_transport *transport = data;
++
++	if (!strcmp(media_endpoint_get_uuid(transport->endpoint),
++						BAA_SERVICE_UUID)) {
++		transport_update_playing(transport, FALSE);
++	}
++
++	return NULL;
++}
++
+ static void sink_state_changed(struct btd_service *service,
+ 						sink_state_t old_state,
+ 						sink_state_t new_state,
+-- 
+2.45.2
+
+
+From 827416638289d901fe5b2bc747fc33cff8b7db99 Mon Sep 17 00:00:00 2001
+From: Vlad Pruteanu <vlad.pruteanu@nxp.com>
+Date: Wed, 31 Jul 2024 09:17:13 +0300
+Subject: [PATCH 41/46] client/player: Expose transport 'Unselect' method to
+ the user
+
+This exposes the 'Unselect' method for Broadcast transports. This
+allows the user to terminate the sync to a specific BIS, via a 2
+step process. The first step is the call to this method, which
+changes the transport's state to idle, with the second step being
+done by the audio server which detects this change and releases
+the transport.
+---
+ client/player.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
+
+diff --git a/client/player.c b/client/player.c
+index c36e7ff4851b..f1cd909663eb 100644
+--- a/client/player.c
++++ b/client/player.c
+@@ -4783,6 +4783,24 @@ static void select_reply(DBusMessage *message, void *user_data)
+ 	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
+ }
+ 
++static void unselect_reply(DBusMessage *message, void *user_data)
++{
++	DBusError error;
++
++	dbus_error_init(&error);
++
++	if (dbus_set_error_from_message(&error, message) == TRUE) {
++		bt_shell_printf("Failed to unselect: %s\n", error.name);
++		dbus_error_free(&error);
++		return bt_shell_noninteractive_quit(EXIT_FAILURE);
++	}
++
++	bt_shell_printf("Select successful");
++
++	return bt_shell_noninteractive_quit(EXIT_SUCCESS);
++}
++
++
+ static void prompt_acquire(const char *input, void *user_data)
+ {
+ 	GDBusProxy *proxy = user_data;
+@@ -5013,6 +5031,16 @@ static void transport_select(GDBusProxy *proxy, bool prompt)
+ 	}
+ }
+ 
++static void transport_unselect(GDBusProxy *proxy, bool prompt)
++{
++	if (!g_dbus_proxy_method_call(proxy, "Unselect", NULL,
++					unselect_reply, proxy, NULL)) {
++		bt_shell_printf("Failed unselect transport\n");
++		return;
++	}
++}
++
++
+ static void cmd_select_transport(int argc, char *argv[])
+ {
+ 	GDBusProxy *proxy;
+@@ -5036,6 +5064,23 @@ static void cmd_select_transport(int argc, char *argv[])
+ 	}
+ }
+ 
++static void cmd_unselect_transport(int argc, char *argv[])
++{
++	GDBusProxy *proxy;
++	int i;
++
++	for (i = 1; i < argc; i++) {
++		proxy = g_dbus_proxy_lookup(transports, NULL, argv[i],
++					BLUEZ_MEDIA_TRANSPORT_INTERFACE);
++		if (!proxy) {
++			bt_shell_printf("Transport %s not found\n", argv[i]);
++			return bt_shell_noninteractive_quit(EXIT_FAILURE);
++		}
++
++		transport_unselect(proxy, false);
++	}
++}
++
+ static void release_reply(DBusMessage *message, void *user_data)
+ {
+ 	struct transport *transport = user_data;
+@@ -5467,6 +5512,9 @@ static const struct bt_shell_menu transport_menu = {
+ 	{ "select",      "<transport> [transport1...]", cmd_select_transport,
+ 						"Select Transport",
+ 						transport_generator },
++	{ "unselect",    "<transport> [transport1...]", cmd_unselect_transport,
++						"Unselect Transport",
++						transport_generator },
+ 	{} },
+ };
+ 
+-- 
+2.45.2
+
+
+From 720e8ec9760b8d8bfb565e535bd311bbc8273a76 Mon Sep 17 00:00:00 2001
+From: Alexander Ganslandt <alexander.ganslandt@axis.com>
+Date: Wed, 31 Jul 2024 12:23:21 +0200
+Subject: [PATCH 42/46] client/gatt: Set handle before calling print functions
+
+The print functions (print_service, print_chrc and print_desc) all print
+the handle, but the handle is never set in the struct object. This
+results in the handle always printing as 0x0000. Set the handle before
+calling the print function.
+---
+ client/gatt.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/client/gatt.c b/client/gatt.c
+index e1d2b545d691..4dac8859060b 100644
+--- a/client/gatt.c
++++ b/client/gatt.c
+@@ -165,6 +165,7 @@ static void print_service_proxy(GDBusProxy *proxy, const char *description)
+ 	DBusMessageIter iter;
+ 	const char *uuid;
+ 	dbus_bool_t primary;
++	uint16_t handle;
+ 
+ 	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
+ 		return;
+@@ -176,10 +177,16 @@ static void print_service_proxy(GDBusProxy *proxy, const char *description)
+ 
+ 	dbus_message_iter_get_basic(&iter, &primary);
+ 
++	if (g_dbus_proxy_get_property(proxy, "Handle", &iter) == FALSE)
++		return;
++
++	dbus_message_iter_get_basic(&iter, &handle);
++
+ 	memset(&service, 0, sizeof(service));
+ 	service.path = (char *) g_dbus_proxy_get_path(proxy);
+ 	service.uuid = (char *) uuid;
+ 	service.primary = primary;
++	service.handle = handle;
+ 
+ 	print_service(&service, description);
+ }
+@@ -253,15 +260,22 @@ static void print_characteristic(GDBusProxy *proxy, const char *description)
+ 	struct chrc chrc;
+ 	DBusMessageIter iter;
+ 	const char *uuid;
++	uint16_t handle;
+ 
+ 	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
+ 		return;
+ 
+ 	dbus_message_iter_get_basic(&iter, &uuid);
+ 
++	if (g_dbus_proxy_get_property(proxy, "Handle", &iter) == FALSE)
++		return;
++
++	dbus_message_iter_get_basic(&iter, &handle);
++
+ 	memset(&chrc, 0, sizeof(chrc));
+ 	chrc.path = (char *) g_dbus_proxy_get_path(proxy);
+ 	chrc.uuid = (char *) uuid;
++	chrc.handle = handle;
+ 
+ 	print_chrc(&chrc, description);
+ }
+@@ -347,15 +361,22 @@ static void print_descriptor(GDBusProxy *proxy, const char *description)
+ 	struct desc desc;
+ 	DBusMessageIter iter;
+ 	const char *uuid;
++	uint16_t handle;
+ 
+ 	if (g_dbus_proxy_get_property(proxy, "UUID", &iter) == FALSE)
+ 		return;
+ 
+ 	dbus_message_iter_get_basic(&iter, &uuid);
+ 
++	if (g_dbus_proxy_get_property(proxy, "Handle", &iter) == FALSE)
++		return;
++
++	dbus_message_iter_get_basic(&iter, &handle);
++
+ 	memset(&desc, 0, sizeof(desc));
+ 	desc.path = (char *) g_dbus_proxy_get_path(proxy);
+ 	desc.uuid = (char *) uuid;
++	desc.handle = handle;
+ 
+ 	print_desc(&desc, description);
+ }
+-- 
+2.45.2
+
+
+From 8a708aa5f04613768e903d243a7261efd202ea88 Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Wed, 31 Jul 2024 12:15:47 +0100
+Subject: [PATCH 43/46] monitor: Fix crash parsing notification
+
+This fixes the following crash caused by notify callback being NULL:
+
+Jump to the invalid address stated on the next line
+   at 0x0: ???
+   by 0x1E8375: print_notify (att.c:5420)
+   by 0x1E9464: att_multiple_vl_rsp (att.c:5463)
+   by 0x20D39E: att_packet (att.c:5637)
+   by 0x1B2054: l2cap_frame (l2cap.c:2567)
+   by 0x1B4A4D: l2cap_packet (l2cap.c:2708)
+   by 0x19AD43: packet_hci_acldata (packet.c:12522)
+   by 0x19CF07: packet_monitor (packet.c:4249)
+   by 0x152405: data_callback (control.c:973)
+   by 0x2204F6: mainloop_run (mainloop.c:106)
+   by 0x221017: mainloop_run_with_signal (mainloop-notify.c:189)
+   by 0x14F387: main (main.c:298)
+ Address 0x0 is not stack'd, malloc'd or (recently) free'd
+---
+ monitor/att.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/monitor/att.c b/monitor/att.c
+index a23347ef7ede..73a61658454f 100644
+--- a/monitor/att.c
++++ b/monitor/att.c
+@@ -4646,7 +4646,8 @@ static void print_notify(const struct l2cap_frame *frame, uint16_t handle,
+ 		frame = &clone;
+ 	}
+ 
+-	handler->notify(frame);
++	if (handler->notify)
++		handler->notify(frame);
+ }
+ 
+ static void att_handle_value_notify(const struct l2cap_frame *frame)
+-- 
+2.45.2
+
+
+From fe703a0058d8271a259885d3da4e886400cf4245 Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Wed, 31 Jul 2024 12:17:07 +0100
+Subject: [PATCH 44/46] shared/bap: Fix not setting metadata
+
+bt_bap_stream_metatada shall not send Update Metadata if the states
+don't allow it, instead it shall store it so it can be send later when
+enabling the stream.
+---
+ src/shared/bap.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/src/shared/bap.c b/src/shared/bap.c
+index 499e740c9162..a7217b4177e7 100644
+--- a/src/shared/bap.c
++++ b/src/shared/bap.c
+@@ -1971,8 +1971,17 @@ static unsigned int bap_ucast_metadata(struct bt_bap_stream *stream,
+ 		return 0;
+ 	}
+ 
+-	return bap_stream_metadata(stream, BT_ASCS_METADATA, data, func,
+-					user_data);
++	switch (bt_bap_stream_get_state(stream)) {
++	/* Valid only if ASE_State field = 0x03 (Enabling) */
++	case BT_BAP_STREAM_STATE_ENABLING:
++	 /* or 0x04 (Streaming) */
++	case BT_BAP_STREAM_STATE_STREAMING:
++		return bap_stream_metadata(stream, BT_ASCS_METADATA, data, func,
++						user_data);
++	}
++
++	stream_metadata(stream, data, NULL);
++	return 0;
+ }
+ 
+ static uint8_t stream_release(struct bt_bap_stream *stream, struct iovec *rsp)
+-- 
+2.45.2
+
+
+From 998104507ba103ae0c83641d381794bf11dd46e0 Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Wed, 31 Jul 2024 12:19:04 +0100
+Subject: [PATCH 45/46] bap: Fix not setting metatada
+
+Fix not using bt_bap_stream_metadata when configuring a new stream as
+the endpoint/client may have set it.
+---
+ profiles/audio/bap.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/profiles/audio/bap.c b/profiles/audio/bap.c
+index 53f430d66171..a2c5a546db47 100644
+--- a/profiles/audio/bap.c
++++ b/profiles/audio/bap.c
+@@ -1523,6 +1523,10 @@ static void setup_config(void *data, void *user_data)
+ 		return;
+ 	}
+ 
++	if (setup->metadata && setup->metadata->iov_len)
++		bt_bap_stream_metadata(setup->stream, setup->metadata, NULL,
++								NULL);
++
+ 	bt_bap_stream_set_user_data(setup->stream, ep->path);
+ }
+ 
+-- 
+2.45.2
+
+
+From 100c845b2d20e7f4f96b371e044b8b59944230ab Mon Sep 17 00:00:00 2001
+From: Luiz Augusto von Dentz <luiz.von.dentz@intel.com>
+Date: Thu, 25 Jul 2024 15:17:39 -0400
+Subject: [PATCH 46/46] shared/bap: Fix overwriting sink attribute
+
+When allocating the sink and sink_ccc attribute they were being
+overwriten by source and source_ccc attributes.
+---
+ src/shared/bap.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/shared/bap.c b/src/shared/bap.c
+index a7217b4177e7..9381ebb39a7c 100644
+--- a/src/shared/bap.c
++++ b/src/shared/bap.c
+@@ -559,14 +559,14 @@ static struct bt_pacs *pacs_new(struct gatt_db *db)
+ 					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE);
+ 
+ 	bt_uuid16_create(&uuid, PAC_SOURCE_CHRC_UUID);
+-	pacs->sink = gatt_db_service_add_characteristic(pacs->service, &uuid,
++	pacs->source = gatt_db_service_add_characteristic(pacs->service, &uuid,
+ 					BT_ATT_PERM_READ,
+ 					BT_GATT_CHRC_PROP_READ |
+ 					BT_GATT_CHRC_PROP_NOTIFY,
+ 					pacs_source_read, NULL,
+ 					pacs);
+ 
+-	pacs->sink_ccc = gatt_db_service_add_ccc(pacs->service,
++	pacs->source_ccc = gatt_db_service_add_ccc(pacs->service,
+ 					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE);
+ 
+ 	bt_uuid16_create(&uuid, PAC_SOURCE_LOC_CHRC_UUID);
+-- 
+2.45.2
+

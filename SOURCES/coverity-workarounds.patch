@@ -1,0 +1,481 @@
+From ad622447efc5429a5dc3f84c722a81cc41658e7e Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Mon, 5 Aug 2024 12:17:29 +0200
+Subject: [PATCH 1/8] monitor: Work-around overflow_sink Case #01164573
+
+Coverity thinks "len" can be negative, even though we check its value,
+and exit the function if it is.
+---
+ monitor/control.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/monitor/control.c b/monitor/control.c
+index 62857b4b84de..40e8a3a90c05 100644
+--- a/monitor/control.c
++++ b/monitor/control.c
+@@ -1102,6 +1102,7 @@ static void client_callback(int fd, uint32_t events, void *user_data)
+ 	    UINT16_MAX - data->offset > len)
+ 		return;
+ 
++	/* coverity[overflow] : FALSE */
+ 	data->offset += len;
+ 
+ 	while (data->offset >= MGMT_HDR_SIZE) {
+-- 
+2.45.2
+
+
+From c2a1630f0e484c4330c565c56e9a26f8f1ae2664 Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Tue, 30 Jul 2024 15:45:18 +0200
+Subject: [PATCH 2/8] mesh/net: Work-around memory overallocation warning
+
+Coverity doesn't realise that the "payload" struct was allocated past
+its structure size, so quiet that warning.
+
+Error: OVERRUN (CWE-119): [#def1] [important]
+bluez-5.77/mesh/net.c:3276:2: cond_at_most: Checking "msg_len > 384" implies that "msg_len" may be up to 384 on the false branch.
+bluez-5.77/mesh/net.c:3290:2: cond_at_most: Checking "msg_len <= 15" implies that "msg_len" may be up to 15 on the true branch.
+bluez-5.77/mesh/net.c:3316:2: overrun-buffer-arg: Overrunning array "payload->buf" of 4 bytes by passing it to a function which accesses it at byte offset 14 using argument "msg_len" (which evaluates to 15). [Note: The source code implementation of the function has been overridden by a builtin model.]
+3314|		/* Setup OTA Network send */
+3315|		payload = mesh_sar_new(msg_len);
+3316|->		memcpy(payload->buf, msg, msg_len);
+3317|		payload->len = msg_len;
+3318|		payload->src = src;
+---
+ mesh/net.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/mesh/net.c b/mesh/net.c
+index ef6a3133859a..ca2cda8ec948 100644
+--- a/mesh/net.c
++++ b/mesh/net.c
+@@ -3306,6 +3306,7 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
+ 
+ 	/* Setup OTA Network send */
+ 	payload = mesh_sar_new(msg_len);
++	/* coverity[overrun-buffer-arg] : FALSE */
+ 	memcpy(payload->buf, msg, msg_len);
+ 	payload->len = msg_len;
+ 	payload->src = src;
+-- 
+2.45.2
+
+
+From 6494fc8665f89b70b8e9d80b829eabc71a22278f Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Wed, 17 Jul 2024 12:51:56 +0200
+Subject: [PATCH 3/8] shared/shell: Work-around SAT-45980 with wordexp()
+
+Coverity sees a leak when one doesn't exist yet.
+
+Error: RESOURCE_LEAK (CWE-772): [#def23] [important]
+bluez-5.77/src/shared/shell.c:534:2: alloc_arg: "parse_args" allocates memory that is stored into "w.we_wordv".
+bluez-5.77/src/shared/shell.c:558:3: leaked_storage: Variable "w" going out of scope leaks the storage "w.we_wordv" points to.
+556|			"Unable to parse optional command arguments: %s", opt);
+557|		free(opt);
+558|->		return -EINVAL;
+559|	}
+560|
+---
+ src/shared/shell.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/shared/shell.c b/src/shared/shell.c
+index 26c6a419af22..9d2b50b260f9 100644
+--- a/src/shared/shell.c
++++ b/src/shared/shell.c
+@@ -555,6 +555,7 @@ optional:
+ 		print_text(COLOR_HIGHLIGHT,
+ 			"Unable to parse optional command arguments: %s", opt);
+ 		free(opt);
++		/* coverity[leaked_storage : FALSE] */
+ 		return -EINVAL;
+ 	}
+ 
+-- 
+2.45.2
+
+
+From 99c12a3e56129361ed50934054876126b1e55881 Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Wed, 17 Jul 2024 11:28:17 +0200
+Subject: [PATCH 4/8] sdp: Work-around #01163325 with single-linked list
+
+Error: RESOURCE_LEAK (CWE-772): [#def2] [important]
+bluez-5.77/lib/sdp.c:1896:4: alloc_fn: Storage is returned from allocation function "sdp_list_append".
+bluez-5.77/lib/sdp.c:1896:4: var_assign: Assigning: "pds" = storage returned from "sdp_list_append(pds, curr->val.dataseq)".
+bluez-5.77/lib/sdp.c:1896:4: identity_transfer: Passing "pds" as argument 1 to function "sdp_list_append", which returns that argument.
+bluez-5.77/lib/sdp.c:1896:4: noescape: Resource "pds" is not freed or pointed-to in "sdp_list_append".
+bluez-5.77/lib/sdp.c:1896:4: overwrite_var: Overwriting "pds" in "pds = sdp_list_append(pds, curr->val.dataseq)".
+bluez-5.77/lib/sdp.c:1896:4: var_assign: Assigning: "pds" = storage returned from "sdp_list_append(pds, curr->val.dataseq)".
+bluez-5.77/lib/sdp.c:1896:4: noescape: Resource "pds" is not freed or pointed-to in "sdp_list_append".
+bluez-5.77/lib/sdp.c:1896:4: overwrite_var: Overwriting "pds" in "pds = sdp_list_append(pds, curr->val.dataseq)" leaks the storage that "pds" points to.
+1894|					goto failed;
+1895|				}
+1896|->				pds = sdp_list_append(pds, curr->val.dataseq);
+1897|			}
+1898|
+
+Error: RESOURCE_LEAK (CWE-772): [#def3] [important]
+bluez-5.77/lib/sdp.c:1899:3: alloc_fn: Storage is returned from allocation function "sdp_list_append".
+bluez-5.77/lib/sdp.c:1899:3: var_assign: Assigning: "ap" = storage returned from "sdp_list_append(ap, pds)".
+bluez-5.77/lib/sdp.c:1899:3: identity_transfer: Passing "ap" as argument 1 to function "sdp_list_append", which returns that argument.
+bluez-5.77/lib/sdp.c:1899:3: noescape: Resource "ap" is not freed or pointed-to in "sdp_list_append".
+bluez-5.77/lib/sdp.c:1899:3: overwrite_var: Overwriting "ap" in "ap = sdp_list_append(ap, pds)".
+bluez-5.77/lib/sdp.c:1899:3: var_assign: Assigning: "ap" = storage returned from "sdp_list_append(ap, pds)".
+bluez-5.77/lib/sdp.c:1899:3: noescape: Resource "ap" is not freed or pointed-to in "sdp_list_append".
+bluez-5.77/lib/sdp.c:1899:3: overwrite_var: Overwriting "ap" in "ap = sdp_list_append(ap, pds)" leaks the storage that "ap" points to.
+1897|			}
+1898|
+1899|->			ap = sdp_list_append(ap, pds);
+1900|		}
+1901|
+
+Error: RESOURCE_LEAK (CWE-772): [#def17] [important]
+bluez-5.77/src/sdp-client.c:197:3: alloc_fn: Storage is returned from allocation function "sdp_list_append".
+bluez-5.77/src/sdp-client.c:197:3: var_assign: Assigning: "recs" = storage returned from "sdp_list_append(recs, rec)".
+bluez-5.77/src/sdp-client.c:197:3: identity_transfer: Passing "recs" as argument 1 to function "sdp_list_append", which returns that argument.
+bluez-5.77/src/sdp-client.c:197:3: noescape: Resource "recs" is not freed or pointed-to in "sdp_list_append".
+bluez-5.77/src/sdp-client.c:197:3: overwrite_var: Overwriting "recs" in "recs = sdp_list_append(recs, rec)".
+bluez-5.77/src/sdp-client.c:197:3: var_assign: Assigning: "recs" = storage returned from "sdp_list_append(recs, rec)".
+bluez-5.77/src/sdp-client.c:197:3: noescape: Resource "recs" is not freed or pointed-to in "sdp_list_append".
+bluez-5.77/src/sdp-client.c:197:3: overwrite_var: Overwriting "recs" in "recs = sdp_list_append(recs, rec)" leaks the storage that "recs" points to.
+195|		}
+196|
+197|->		recs = sdp_list_append(recs, rec);
+198|	} while (scanned < (ssize_t) size && bytesleft > 0);
+199|
+---
+ lib/sdp.c        | 2 ++
+ src/sdp-client.c | 1 +
+ 2 files changed, 3 insertions(+)
+
+diff --git a/lib/sdp.c b/lib/sdp.c
+index 8a15ad803db1..99efbc19c299 100644
+--- a/lib/sdp.c
++++ b/lib/sdp.c
+@@ -1893,9 +1893,11 @@ static int sdp_get_proto_descs(uint16_t attr_id, const sdp_record_t *rec,
+ 				sdp_list_free(pds, NULL);
+ 				goto failed;
+ 			}
++			/* coverity[overwrite_var] : FALSE */
+ 			pds = sdp_list_append(pds, curr->val.dataseq);
+ 		}
+ 
++		/* coverity[overwrite_var] : FALSE */
+ 		ap = sdp_list_append(ap, pds);
+ 	}
+ 
+diff --git a/src/sdp-client.c b/src/sdp-client.c
+index 71d3d9e95044..2f043cb7f010 100644
+--- a/src/sdp-client.c
++++ b/src/sdp-client.c
+@@ -194,6 +194,7 @@ static void search_completed_cb(uint8_t type, uint16_t status,
+ 			continue;
+ 		}
+ 
++		/* coverity[overwrite_var] : FALSE */
+ 		recs = sdp_list_append(recs, rec);
+ 	} while (scanned < (ssize_t) size && bytesleft > 0);
+ 
+-- 
+2.45.2
+
+
+From 6fcbf34a02133628a1a8afeabb093270ca89dbb8 Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Thu, 18 Jul 2024 15:05:07 +0200
+Subject: [PATCH 5/8] mesh: Quiet imprecise "overrun-buffer-val" #01163326
+
+Error: OVERRUN (CWE-119): [#def1] [important]
+bluez-5.77/mesh/friend.c:326:2: overrun-buffer-val: Overrunning array "msg" of 5 bytes by passing it to a function which accesses it at byte offset 12.
+324|	l_put_be16(neg->lp_addr, msg + 1);
+325|	l_put_be16(neg->lp_cnt, msg + 3);
+326|->	mesh_net_transport_send(neg->net, 0, 0,
+327|			mesh_net_get_iv_index(neg->net), DEFAULT_TTL,
+328|			0, 0, neg->old_friend,
+
+Error: OVERRUN (CWE-119): [#def2] [important]
+bluez-5.77/mesh/net.c:276:2: overrun-buffer-val: Overrunning array "msg" of 4 bytes by passing it to a function which accesses it at byte offset 12.
+274|	n += 2;
+275|
+276|->	mesh_net_transport_send(net, 0, 0, mesh_net_get_iv_index(net),
+277|					pub->ttl, 0, 0, pub->dst, msg, n);
+278|   }
+
+Error: OVERRUN (CWE-119): [#def3] [important]
+bluez-5.77/mesh/net.c:1463:3: overrun-buffer-val: Overrunning array "msg" of 7 bytes by passing it to a function which accesses it at byte offset 12.
+1461|					mesh_net_next_seq_num(net), 0, dst, msg);
+1462|		} else {
+1463|->			mesh_net_transport_send(net, 0, 0,
+1464|					mesh_net_get_iv_index(net), DEFAULT_TTL,
+1465|					0, 0, dst, msg, sizeof(msg));
+
+Error: OVERRUN (CWE-119): [#def4] [important]
+bluez-5.77/mesh/net.c:1498:2: overrun-buffer-val: Overrunning array "msg" of 7 bytes by passing it to a function which accesses it at byte offset 12.
+1496|		}
+1497|
+1498|->		mesh_net_transport_send(net, 0, sar->net_idx,
+1499|					mesh_net_get_iv_index(net), DEFAULT_TTL,
+1500|					0, src, dst, msg,
+
+Error: OVERRUN (CWE-119): [#def6] [important]
+bluez-5.77/mesh/net.c:2053:3: overrun-buffer-val: Overrunning array "sar_in->buf" of 4 bytes by passing it to a function which accesses it at byte offset 11.
+2051|			send_net_ack(net, sar_in, expected);
+2052|
+2053|->			msg_rxed(net, frnd, iv_index, ttl, seq, net_idx,
+2054|					sar_in->remote, dst, key_aid, true, szmic,
+2055|					sar_in->seqZero, sar_in->buf, sar_in->len);
+---
+ mesh/friend.c | 1 +
+ mesh/net.c    | 4 ++++
+ 2 files changed, 5 insertions(+)
+
+diff --git a/mesh/friend.c b/mesh/friend.c
+index 5b73da68916f..bb8f62e9f57f 100644
+--- a/mesh/friend.c
++++ b/mesh/friend.c
+@@ -323,6 +323,7 @@ static void clear_retry(struct l_timeout *timeout, void *user_data)
+ 
+ 	l_put_be16(neg->lp_addr, msg + 1);
+ 	l_put_be16(neg->lp_cnt, msg + 3);
++	/* coverity[overrun-buffer-val] : FALSE */
+ 	mesh_net_transport_send(neg->net, 0, 0,
+ 			mesh_net_get_iv_index(neg->net), DEFAULT_TTL,
+ 			0, 0, neg->old_friend,
+diff --git a/mesh/net.c b/mesh/net.c
+index ca2cda8ec948..9d6c2ae5142f 100644
+--- a/mesh/net.c
++++ b/mesh/net.c
+@@ -273,6 +273,7 @@ static void send_hb_publication(void *data)
+ 	l_put_be16(net->features, msg + n);
+ 	n += 2;
+ 
++	/* coverity[overrun-buffer-val] : FALSE */
+ 	mesh_net_transport_send(net, 0, 0, mesh_net_get_iv_index(net),
+ 					pub->ttl, 0, 0, pub->dst, msg, n);
+ }
+@@ -1460,6 +1461,7 @@ static void send_frnd_ack(struct mesh_net *net, uint16_t src, uint16_t dst,
+ 		friend_ack_rxed(net, mesh_net_get_iv_index(net),
+ 				mesh_net_next_seq_num(net), 0, dst, msg);
+ 	} else {
++		/* coverity[overrun-buffer-val] : FALSE */
+ 		mesh_net_transport_send(net, 0, 0,
+ 				mesh_net_get_iv_index(net), DEFAULT_TTL,
+ 				0, 0, dst, msg, sizeof(msg));
+@@ -1495,6 +1497,7 @@ static void send_net_ack(struct mesh_net *net, struct mesh_sar *sar,
+ 		return;
+ 	}
+ 
++	/* coverity[overrun-buffer-val] : FALSE */
+ 	mesh_net_transport_send(net, 0, sar->net_idx,
+ 				mesh_net_get_iv_index(net), DEFAULT_TTL,
+ 				0, src, dst, msg,
+@@ -2050,6 +2053,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
+ 		/* Got it all */
+ 		send_net_ack(net, sar_in, expected);
+ 
++		/* coverity[overrun-buffer-val] : FALSE */
+ 		msg_rxed(net, frnd, iv_index, ttl, seq, net_idx,
+ 				sar_in->remote, dst, key_aid, true, szmic,
+ 				sar_in->seqZero, sar_in->buf, sar_in->len);
+-- 
+2.45.2
+
+
+From 91066706378840f28146e51702e3ed8c1780dcd9 Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Thu, 18 Jul 2024 15:37:58 +0200
+Subject: [PATCH 6/8] mesh: Quiet imprecise "overrun-buffer-val" #01163327
+
+Those errors are incorrect, as just before the flagged function calls,
+the packet is modified to flag for a "segmented" packet, which is
+handled differently, so nothing is accessed past the array size.
+
+Error: OVERRUN (CWE-119): [#def5] [important]
+bluez-5.77/mesh/net.c:1769:3: cond_at_least: Checking "size > 15" implies that "size" is at least 16 on the true branch.
+bluez-5.77/mesh/net.c:1776:3: overrun-call: Overrunning callee's array of size 15 by passing argument "size" (which evaluates to 16) in call to "friend_packet_queue".
+1774|                   }
+1775|
+1776|->                 if (friend_packet_queue(net, iv_index, false, frnd_ttl,
+1777|                                           seq, src, dst,
+1778|                                           hdr, data, size))
+
+Error: OVERRUN (CWE-119): [#def2] [important]
+bluez-5.77/mesh/net.c:2016:3: cond_at_least: Checking "segN" implies that "segN" is at least 1 on the true branch.
+bluez-5.77/mesh/net.c:2016:3: assignment: Assigning: "len" = "segN ? (segN + 1) * 12 : 15". The value of "len" is now at least 24.
+bluez-5.77/mesh/net.c:2028:3: assignment: Assigning: "sar_in->len" = "len". The value of "sar_in->len" is now at least 24.
+bluez-5.77/mesh/net.c:2058:3: overrun-call: Overrunning callee's array of size 15 by passing argument "sar_in->len" (which evaluates to 24) in call to "msg_rxed".
+2056|
+2057|			/* coverity[overrun-buffer-val] : FALSE */
+2058|->			msg_rxed(net, frnd, iv_index, ttl, seq, net_idx,
+2059|					sar_in->remote, dst, key_aid, true, szmic,
+2060|					sar_in->seqZero, sar_in->buf, sar_in->len);
+
+Error: OVERRUN (CWE-119): [#def4] [important]
+bluez-5.77/mesh/net.c:3266:2: cond_at_most: Checking "msg_len > 384" implies that "msg_len" may be up to 384 on the false branch.
+bluez-5.77/mesh/net.c:3280:2: cond_between: Checking "msg_len <= 15" implies that "msg_len" is between 16 and 384 (inclusive) on the false branch.
+bluez-5.77/mesh/net.c:3284:2: overrun-call: Overrunning callee's array of size 15 by passing argument "msg_len" (which evaluates to 384) in call to "msg_rxed".
+3282|
+3283|		/* First enqueue to any Friends and internal models */
+3284|->		result = msg_rxed(net, false, iv_index, ttl, seq, net_idx, src, dst,
+3285|					key_aid, segmented, szmic, seq & SEQ_ZERO_MASK,
+3286|					msg, msg_len);
+---
+ mesh/net.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/mesh/net.c b/mesh/net.c
+index 9d6c2ae5142f..30dcdb2fe517 100644
+--- a/mesh/net.c
++++ b/mesh/net.c
+@@ -1776,6 +1776,7 @@ static bool msg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
+ 			hdr |= SEG_MAX(true, size) << SEGN_HDR_SHIFT;
+ 		}
+ 
++		/* coverity[overrun-call] : FALSE */
+ 		if (friend_packet_queue(net, iv_index, false, frnd_ttl,
+ 					seq, src, dst,
+ 					hdr, data, size))
+@@ -2054,6 +2055,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
+ 		send_net_ack(net, sar_in, expected);
+ 
+ 		/* coverity[overrun-buffer-val] : FALSE */
++		/* coverity[overrun-call] : FALSE */
+ 		msg_rxed(net, frnd, iv_index, ttl, seq, net_idx,
+ 				sar_in->remote, dst, key_aid, true, szmic,
+ 				sar_in->seqZero, sar_in->buf, sar_in->len);
+@@ -3289,6 +3291,7 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
+ 	segmented |= !!(seg_max);
+ 
+ 	/* First enqueue to any Friends and internal models */
++	/* coverity[overrun-call] : FALSE */
+ 	result = msg_rxed(net, false, iv_index, ttl, seq, net_idx, src, dst,
+ 				key_aid, segmented, szmic, seq & SEQ_ZERO_MASK,
+ 				msg, msg_len);
+-- 
+2.45.2
+
+
+From 1a1239f998ca15dd233e2adaa2ce12f4ae97e5d1 Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Fri, 19 Jul 2024 15:06:24 +0200
+Subject: [PATCH 7/8] shared/gatt-db: Work-around overrun-buffer-arg case
+ #01163328
+
+Despite the checks added, Coverity still thinks that uuid_to_le() can
+return more than 16 (for UUID128 / 8), so quiet those.
+
+Error: OVERRUN (CWE-119): [#def6] [important]
+bluez-5.77/src/shared/gatt-db.c:612:2: assignment: Assigning: "len" = "uuid_to_le(uuid, value)". The value of "len" is now between 0 and 31 (inclusive).
+bluez-5.77/src/shared/gatt-db.c:614:2: overrun-buffer-arg: Overrunning array "value" of 16 bytes by passing it to a function which accesses it at byte offset 30 using argument "len" (which evaluates to 31).
+612|    len = uuid_to_le(uuid, value);
+613|
+614|->  service->attributes[0] = new_attribute(service, handle, type, value,
+615|                                                                    len);
+616|    if (!service->attributes[0]) {
+
+Error: OVERRUN (CWE-119): [#def7] [important]
+bluez-5.77/src/shared/gatt-db.c:947:2: assignment: Assigning: "len" = "0".
+bluez-5.77/src/shared/gatt-db.c:971:2: assignment: Assigning: "len" += "1UL". The value of "len" is now 1.
+bluez-5.77/src/shared/gatt-db.c:975:2: assignment: Assigning: "len" += "2UL". The value of "len" is now 3.
+bluez-5.77/src/shared/gatt-db.c:976:2: assignment: Assigning: "len" += "uuid_to_le(uuid, &value[3])". The value of "len" is now between 3 and 34 (inclusive).
+bluez-5.77/src/shared/gatt-db.c:978:2: overrun-buffer-arg: Overrunning array "value" of 19 bytes by passing it to a function which accesses it at byte offset 33 using argument "len" (which evaluates to 34).
+976|    len += uuid_to_le(uuid, &value[3]);
+977|
+978|->  service->attributes[i] = new_attribute(service, handle,
+979|                                                    &characteristic_uuid,
+980|                                                    value, len);
+
+Error: OVERRUN (CWE-119): [#def8] [important]
+bluez-5.77/src/shared/gatt-db.c:947:2: assignment: Assigning: "len" = "0".
+bluez-5.77/src/shared/gatt-db.c:971:2: assignment: Assigning: "len" += "1UL". The value of "len" is now 1.
+bluez-5.77/src/shared/gatt-db.c:975:2: assignment: Assigning: "len" += "2UL". The value of "len" is now 3.
+bluez-5.77/src/shared/gatt-db.c:976:2: assignment: Assigning: "len" += "uuid_to_le(uuid, &value[3])". The value of "len" is now between 3 and 34 (inclusive).
+bluez-5.77/src/shared/gatt-db.c:1005:2: overrun-buffer-arg: Overrunning array "value" of 19 bytes by passing it to a function which accesses it at byte offset 33 using argument "len" (which evaluates to 34).
+1003|           /* Update handle of characteristic value_handle if it has changed */
+1004|           put_le16(value_handle, &value[1]);
+1005|->         if (memcmp((*chrc)->value, value, len))
+1006|                   memcpy((*chrc)->value, value, len);
+1007|
+
+Error: OVERRUN (CWE-119): [#def9] [important]
+bluez-5.77/src/shared/gatt-db.c:947:2: assignment: Assigning: "len" = "0".
+bluez-5.77/src/shared/gatt-db.c:971:2: assignment: Assigning: "len" += "1UL". The value of "len" is now 1.
+bluez-5.77/src/shared/gatt-db.c:975:2: assignment: Assigning: "len" += "2UL". The value of "len" is now 3.
+bluez-5.77/src/shared/gatt-db.c:976:2: assignment: Assigning: "len" += "uuid_to_le(uuid, &value[3])". The value of "len" is now between 3 and 34 (inclusive).
+bluez-5.77/src/shared/gatt-db.c:1006:3: overrun-buffer-arg: Overrunning array "value" of 19 bytes by passing it to a function which accesses it at byte offset 33 using argument "len" (which evaluates to 34). [Note: The source code implementation of the function has been overridden by a builtin model.]
+1004|           put_le16(value_handle, &value[1]);
+1005|           if (memcmp((*chrc)->value, value, len))
+1006|->                 memcpy((*chrc)->value, value, len);
+1007|
+1008|           set_attribute_data(service->attributes[i], read_func, write_func,
+---
+ src/shared/gatt-db.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/shared/gatt-db.c b/src/shared/gatt-db.c
+index cd0eba6bf1d0..9045a53c6dfe 100644
+--- a/src/shared/gatt-db.c
++++ b/src/shared/gatt-db.c
+@@ -616,6 +616,7 @@ static struct gatt_db_service *gatt_db_service_create(const bt_uuid_t *uuid,
+ 
+ 	len = uuid_to_le(uuid, value);
+ 
++	/* coverity[overrun-buffer-arg] : FALSE */
+ 	service->attributes[0] = new_attribute(service, handle, type, value,
+ 									len);
+ 	if (!service->attributes[0]) {
+@@ -980,6 +981,7 @@ service_insert_characteristic(struct gatt_db_service *service,
+ 	len += sizeof(uint16_t);
+ 	len += uuid_to_le(uuid, &value[3]);
+ 
++	/* coverity[overrun-buffer-arg] : FALSE */
+ 	service->attributes[i] = new_attribute(service, handle,
+ 							&characteristic_uuid,
+ 							value, len);
+@@ -1007,8 +1009,11 @@ service_insert_characteristic(struct gatt_db_service *service,
+ 
+ 	/* Update handle of characteristic value_handle if it has changed */
+ 	put_le16(value_handle, &value[1]);
+-	if (memcmp((*chrc)->value, value, len))
++	/* coverity[overrun-buffer-arg] : FALSE */
++	if (memcmp((*chrc)->value, value, len)) {
++		/* coverity[overrun-buffer-arg] : FALSE */
+ 		memcpy((*chrc)->value, value, len);
++	}
+ 
+ 	set_attribute_data(service->attributes[i], read_func, write_func,
+ 							permissions, user_data);
+-- 
+2.45.2
+
+
+From cddd78cb6d2a780b352e27ea5e7e44378f8a8ef4 Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Tue, 30 Jul 2024 15:27:49 +0200
+Subject: [PATCH 8/8] shared/btsnoop: Work-around underflow case #01163329
+
+It should be impossible to have toread underflow, as we check that it
+has a value of at least 1 when decremented, and that we check for it
+have a non-zero value before using it.
+---
+ src/shared/btsnoop.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/shared/btsnoop.c b/src/shared/btsnoop.c
+index bb0bccf0dd01..12f960ec353d 100644
+--- a/src/shared/btsnoop.c
++++ b/src/shared/btsnoop.c
+@@ -553,6 +553,7 @@ bool btsnoop_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
+ 			btsnoop->aborted = true;
+ 			return false;
+ 		}
++		/* coverity[underflow] : FALSE */
+ 		toread--;
+ 
+ 		*index = 0;
+-- 
+2.45.2
+

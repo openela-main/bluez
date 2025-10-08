@@ -1,0 +1,353 @@
+From bdf5fd2a0156e9070e1e55777b4a71033160fbf1 Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Wed, 17 Jul 2024 12:37:16 +0200
+Subject: [PATCH 1/8] sdp: Ensure size doesn't overflow
+
+Error: INTEGER_OVERFLOW (CWE-190): [#def1] [important]
+bluez-5.77/lib/sdp.c:1685:2: tainted_data_argument: The check "sent < size" contains the tainted expression "sent" which causes "size" to be considered tainted.
+bluez-5.77/lib/sdp.c:1686:3: overflow: The expression "size - sent" is deemed overflowed because at least one of its arguments has overflowed.
+bluez-5.77/lib/sdp.c:1686:3: overflow_sink: "size - sent", which might have underflowed, is passed to "send(session->sock, buf + sent, size - sent, 0)".
+1684|
+1685|		while (sent < size) {
+1686|->			int n = send(session->sock, buf + sent, size - sent, 0);
+1687|			if (n < 0)
+1688|				return -1;
+---
+ lib/sdp.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/lib/sdp.c b/lib/sdp.c
+index 411a95b8a7d3..8a15ad803db1 100644
+--- a/lib/sdp.c
++++ b/lib/sdp.c
+@@ -1678,13 +1678,13 @@ sdp_data_t *sdp_data_get(const sdp_record_t *rec, uint16_t attrId)
+ 	return NULL;
+ }
+ 
+-static int sdp_send_req(sdp_session_t *session, uint8_t *buf, uint32_t size)
++static int sdp_send_req(sdp_session_t *session, uint8_t *buf, size_t size)
+ {
+-	uint32_t sent = 0;
++	size_t sent = 0;
+ 
+ 	while (sent < size) {
+ 		int n = send(session->sock, buf + sent, size - sent, 0);
+-		if (n < 0)
++		if (n < 0 || sent > SIZE_MAX - n)
+ 			return -1;
+ 		sent += n;
+ 	}
+-- 
+2.45.2
+
+
+From 062c998fb5c407bc09d6124324b1bd393997bfee Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Thu, 18 Jul 2024 15:43:35 +0200
+Subject: [PATCH 2/8] tools/isotest: Ensure ret doesn't overflow
+
+Error: INTEGER_OVERFLOW (CWE-190): [#def20] [important]
+bluez-5.77/tools/isotest.c:778:2: tainted_data_argument: The check "ret < count" contains the tainted expression "ret" which causes "count" to be considered tainted.
+bluez-5.77/tools/isotest.c:779:3: overflow: The expression "count - ret" is deemed overflowed because at least one of its arguments has overflowed.
+bluez-5.77/tools/isotest.c:779:3: overflow_sink: "count - ret", which might have underflowed, is passed to "read(fd, buf + ret, count - ret)". [Note: The source code implementation of the function has been overridden by a builtin model.]
+777|
+778|	while (ret < count) {
+779|->		len = read(fd, buf + ret, count - ret);
+780|		if (len < 0)
+781|			return -errno;
+---
+ tools/isotest.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/tools/isotest.c b/tools/isotest.c
+index 2cac0e49cc39..0805faa66e47 100644
+--- a/tools/isotest.c
++++ b/tools/isotest.c
+@@ -779,6 +779,8 @@ static int read_stream(int fd, ssize_t count)
+ 		len = read(fd, buf + ret, count - ret);
+ 		if (len < 0)
+ 			return -errno;
++		if (len > SSIZE_MAX - ret)
++			return -EOVERFLOW;
+ 
+ 		ret += len;
+ 		usleep(1000);
+-- 
+2.45.2
+
+
+From 122a888962765010162306f19fccf77333e1bc1b Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Thu, 18 Jul 2024 15:45:47 +0200
+Subject: [PATCH 3/8] health: mcap: Ensure sent doesn't overflow
+
+Error: INTEGER_OVERFLOW (CWE-190): [#def13] [important]
+bluez-5.77/profiles/health/mcap.c:390:2: tainted_data_argument: The check "sent < size" contains the tainted expression "sent" which causes "size" to be considered tainted.
+bluez-5.77/profiles/health/mcap.c:391:3: overflow: The expression "size - sent" is deemed overflowed because at least one of its arguments has overflowed.
+bluez-5.77/profiles/health/mcap.c:391:3: overflow_sink: "size - sent", which might have underflowed, is passed to "write(sock, buf_b + sent, size - sent)".
+389|
+390|	while (sent < size) {
+391|->		int n = write(sock, buf_b + sent, size - sent);
+392|		if (n < 0)
+393|			return -1;
+---
+ profiles/health/mcap.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/profiles/health/mcap.c b/profiles/health/mcap.c
+index 2e4214a6984f..b3bf403e74d2 100644
+--- a/profiles/health/mcap.c
++++ b/profiles/health/mcap.c
+@@ -389,7 +389,7 @@ int mcap_send_data(int sock, const void *buf, uint32_t size)
+ 
+ 	while (sent < size) {
+ 		int n = write(sock, buf_b + sent, size - sent);
+-		if (n < 0)
++		if (n < 0 || n > SSIZE_MAX - sent)
+ 			return -1;
+ 		sent += n;
+ 	}
+-- 
+2.45.2
+
+
+From fce37c2100a043fce99fbe2e8c8171406b841fae Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Fri, 19 Jul 2024 11:26:45 +0200
+Subject: [PATCH 4/8] shared/tester: Add early failure check
+
+Add a similar assertion to the other tests to avoid passing negative len
+to tester_monitor() which might result in crashes.
+
+Error: OVERRUN (CWE-119): [#def13] [important]
+bluez-5.77/src/shared/tester.c:946:2: return_constant: Function call "io_send(io, iov, 1)" may return -107.
+bluez-5.77/src/shared/tester.c:946:2: assignment: Assigning: "len" = "io_send(io, iov, 1)". The value of "len" is now -107.
+bluez-5.77/src/shared/tester.c:948:2: overrun-buffer-arg: Calling "tester_monitor" with "iov->iov_base" and "len" is suspicious because of the very large index, 18446744073709551509. The index may be due to a negative parameter being interpreted as unsigned.
+946|	len = io_send(io, iov, 1);
+947|
+948|->	tester_monitor('<', 0x0004, 0x0000, iov->iov_base, len);
+949|
+950|	g_assert_cmpint(len, ==, iov->iov_len);
+---
+ src/shared/tester.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/shared/tester.c b/src/shared/tester.c
+index 56c8cba6f578..3053025d7945 100644
+--- a/src/shared/tester.c
++++ b/src/shared/tester.c
+@@ -945,6 +945,8 @@ static bool test_io_send(struct io *io, void *user_data)
+ 
+ 	len = io_send(io, iov, 1);
+ 
++	g_assert(len > 0);
++
+ 	tester_monitor('<', 0x0004, 0x0000, iov->iov_base, len);
+ 
+ 	g_assert_cmpint(len, ==, iov->iov_len);
+-- 
+2.45.2
+
+
+From 5078e205d5892048cb1243ce2977dcf8eb0c02fc Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Mon, 29 Jul 2024 13:53:41 +0200
+Subject: [PATCH 5/8] mesh: Fix possible integer overflow
+
+Error: INTEGER_OVERFLOW (CWE-190): [#def1] [important]
+bluez-5.77/mesh/net.c:3164:4: cast_overflow: Truncation due to cast operation on "msg->len - seg_off" from 32 to 8 bits.
+bluez-5.77/mesh/net.c:3164:4: overflow_assign: "seg_len" is assigned from "msg->len - seg_off".
+bluez-5.77/mesh/net.c:3178:2: overflow_sink: "seg_len", which might have overflowed, is passed to "mesh_crypto_packet_build(false, msg->ttl, seq_num, msg->src, msg->remote, 0, msg->segmented, msg->key_aid, msg->szmic, false, msg->seqZero, segO, segN, msg->buf + seg_off, seg_len, packet + 1, &packet_len)".
+3176|
+3177|		/* TODO: Are we RXing on an LPN's behalf? Then set RLY bit */
+3178|->		if (!mesh_crypto_packet_build(false, msg->ttl, seq_num, msg->src,
+3179|						msg->remote, 0, msg->segmented,
+3180|						msg->key_aid, msg->szmic, false,
+
+X
+---
+ mesh/net.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/mesh/net.c b/mesh/net.c
+index 05ca48326fc5..ef6a3133859a 100644
+--- a/mesh/net.c
++++ b/mesh/net.c
+@@ -3149,13 +3149,22 @@ static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
+ 	uint32_t seq_num;
+ 
+ 	if (msg->segmented) {
++		if (msg->len < seg_off) {
++			l_error("Failed to build packet");
++			return false;
++		}
+ 		/* Send each segment on unique seq_num */
+ 		seq_num = mesh_net_next_seq_num(net);
+ 
+-		if (msg->len - seg_off > SEG_OFF(1))
++		if (msg->len - seg_off > SEG_OFF(1)) {
+ 			seg_len = SEG_OFF(1);
+-		else
++		} else {
++			if (msg->len - seg_off > UINT8_MAX) {
++				l_error("Failed to build packet");
++				return false;
++			}
+ 			seg_len = msg->len - seg_off;
++		}
+ 	} else {
+ 		/* Send on same seq_num used for Access Layer */
+ 		seq_num = msg->seqAuth;
+-- 
+2.45.2
+
+
+From c37f2cdd4b8fa66fc97d423c4c980865b4793ef2 Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Fri, 19 Jul 2024 14:27:54 +0200
+Subject: [PATCH 6/8] shared/gatt-db: Fix possible buffer overrun
+
+uuid_to_le() returns one of the possible values from bt_uuid_len().
+bt_uuid_len() returns "type / 8".
+type is a value between 0 and 128, but could be something else
+depending on the validity of the UUID that's parsed. So an invalid
+value of type between 128 and 256 would trigger an overrun.
+
+Add a check to make sure that an invalid type isn't used to calculate
+the length.
+
+Error: OVERRUN (CWE-119): [#def6] [important]
+bluez-5.77/src/shared/gatt-db.c:612:2: assignment: Assigning: "len" = "uuid_to_le(uuid, value)". The value of "len" is now between 0 and 31 (inclusive).
+bluez-5.77/src/shared/gatt-db.c:614:2: overrun-buffer-arg: Overrunning array "value" of 16 bytes by passing it to a function which accesses it at byte offset 30 using argument "len" (which evaluates to 31).
+612|	len = uuid_to_le(uuid, value);
+613|
+614|->	service->attributes[0] = new_attribute(service, handle, type, value,
+615|									len);
+616|	if (!service->attributes[0]) {
+---
+ src/shared/gatt-db.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/src/shared/gatt-db.c b/src/shared/gatt-db.c
+index b35763410d17..cd0eba6bf1d0 100644
+--- a/src/shared/gatt-db.c
++++ b/src/shared/gatt-db.c
+@@ -560,9 +560,14 @@ static int uuid_to_le(const bt_uuid_t *uuid, uint8_t *dst)
+ 		return bt_uuid_len(uuid);
+ 	}
+ 
+-	bt_uuid_to_uuid128(uuid, &uuid128);
+-	bswap_128(&uuid128.value.u128, dst);
+-	return bt_uuid_len(&uuid128);
++	if (uuid->type == BT_UUID32 ||
++	    uuid->type == BT_UUID128) {
++		bt_uuid_to_uuid128(uuid, &uuid128);
++		bswap_128(&uuid128.value.u128, dst);
++		return bt_uuid_len(&uuid128);
++	}
++
++	return 0;
+ }
+ 
+ static bool le_to_uuid(const uint8_t *src, size_t len, bt_uuid_t *uuid)
+-- 
+2.45.2
+
+
+From b7cb9a4bc9b94ded15be812d1d444d0ace4a886d Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Fri, 19 Jul 2024 11:29:15 +0200
+Subject: [PATCH 7/8] shared/btsnoop: Avoid underflowing toread variable
+
+Error: INTEGER_OVERFLOW (CWE-190): [#def8] [important]
+bluez-5.77/src/shared/btsnoop.c:556:3: underflow: The decrement operator on the unsigned variable "toread" might result in an underflow.
+bluez-5.77/src/shared/btsnoop.c:572:2: overflow_sink: "toread", which might have underflowed, is passed to "read(btsnoop->fd, data, toread)". [Note: The source code implementation of the function has been overridden by a builtin model.]
+570|	}
+571|
+572|->	len = read(btsnoop->fd, data, toread);
+573|	if (len < 0) {
+574|		btsnoop->aborted = true;
+---
+ src/shared/btsnoop.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/shared/btsnoop.c b/src/shared/btsnoop.c
+index bc5f7fcbe84c..bb0bccf0dd01 100644
+--- a/src/shared/btsnoop.c
++++ b/src/shared/btsnoop.c
+@@ -530,7 +530,7 @@ bool btsnoop_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
+ 	}
+ 
+ 	toread = be32toh(pkt.len);
+-	if (toread > BTSNOOP_MAX_PACKET_SIZE) {
++	if (toread > BTSNOOP_MAX_PACKET_SIZE || toread < 1) {
+ 		btsnoop->aborted = true;
+ 		return false;
+ 	}
+@@ -569,6 +569,11 @@ bool btsnoop_read_hci(struct btsnoop *btsnoop, struct timeval *tv,
+ 		return false;
+ 	}
+ 
++	if (toread == 0) {
++		btsnoop->aborted = true;
++		return false;
++	}
++
+ 	len = read(btsnoop->fd, data, toread);
+ 	if (len < 0) {
+ 		btsnoop->aborted = true;
+-- 
+2.45.2
+
+
+From 354babc88eb98970a9f59056b41854b0f0f87859 Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Fri, 19 Jul 2024 15:14:26 +0200
+Subject: [PATCH 8/8] monitor: Check for possible integer underflow
+
+Error: INTEGER_OVERFLOW (CWE-190): [#def4] [important]
+bluez-5.77/monitor/control.c:1094:2: tainted_data_return: Called function "recv(data->fd, data->buf + data->offset, 1490UL - data->offset, MSG_DONTWAIT)", and a possible return value may be less than zero.
+bluez-5.77/monitor/control.c:1094:2: assign: Assigning: "len" = "recv(data->fd, data->buf + data->offset, 1490UL - data->offset, MSG_DONTWAIT)".
+bluez-5.77/monitor/control.c:1099:2: overflow: The expression "data->offset" is considered to have possibly overflowed.
+bluez-5.77/monitor/control.c:1115:3: overflow: The expression "data->offset -= pktlen + 6" is deemed overflowed because at least one of its arguments has overflowed.
+bluez-5.77/monitor/control.c:1118:4: overflow_sink: "data->offset", which might have underflowed, is passed to "memmove(data->buf, data->buf + 6 + pktlen, data->offset)". [Note: The source code implementation of the function has been overridden by a builtin model.]
+1116|
+1117|			if (data->offset > 0)
+1118|->				memmove(data->buf, data->buf + MGMT_HDR_SIZE + pktlen,
+1119|									data->offset);
+1120|		}
+---
+ monitor/control.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/monitor/control.c b/monitor/control.c
+index 009cf15209f0..62857b4b84de 100644
+--- a/monitor/control.c
++++ b/monitor/control.c
+@@ -18,6 +18,7 @@
+ #include <stdbool.h>
+ #include <stddef.h>
+ #include <errno.h>
++#include <limits.h>
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -1091,9 +1092,14 @@ static void client_callback(int fd, uint32_t events, void *user_data)
+ 		return;
+ 	}
+ 
++	if (sizeof(data->buf) <= data->offset)
++		return;
++
+ 	len = recv(data->fd, data->buf + data->offset,
+ 			sizeof(data->buf) - data->offset, MSG_DONTWAIT);
+-	if (len < 0)
++	if (len < 0 ||
++	    len > UINT16_MAX ||
++	    UINT16_MAX - data->offset > len)
+ 		return;
+ 
+ 	data->offset += len;
+-- 
+2.45.2
+

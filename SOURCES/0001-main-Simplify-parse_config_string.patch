@@ -1,0 +1,82 @@
+From 60b4624089e460a4908c1887de0e777c0453a503 Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Fri, 10 May 2024 13:47:29 +0200
+Subject: [PATCH] main: Simplify parse_config_string()
+
+The memory management done by parse_config_string() was quite
+complicated, as it expected to be able to free the value in the return
+variable if it was already allocated.
+
+That particular behaviour was only used for a single variable which was
+set to its default value during startup and might be overwritten after
+this function call.
+
+Use an intermediate variable to check whether we need to free
+btd_opts.name and simplify parse_config_string().
+
+Error: RESOURCE_LEAK (CWE-772): [#def39] [important]
+bluez-5.75/src/main.c:425:2: alloc_fn: Storage is returned from allocation function "g_key_file_get_string".
+bluez-5.75/src/main.c:425:2: var_assign: Assigning: "tmp" = storage returned from "g_key_file_get_string(config, group, key, &err)".
+bluez-5.75/src/main.c:433:2: noescape: Assuming resource "tmp" is not freed or pointed-to as ellipsis argument to "btd_debug".
+bluez-5.75/src/main.c:440:2: leaked_storage: Variable "tmp" going out of scope leaks the storage it points to.
+438|	}
+439|
+440|->	return true;
+441|   }
+442|
+---
+ src/main.c | 23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
+
+diff --git a/src/main.c b/src/main.c
+index d13ada2afc5b..bde63462ecda 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -430,9 +430,14 @@ static bool parse_config_string(GKeyFile *config, const char *group,
+ 					const char *key, char **val)
+ {
+ 	GError *err = NULL;
+-	char *tmp;
+ 
+-	tmp = g_key_file_get_string(config, group, key, &err);
++	if (val == NULL) {
++		warn("%s passed a NULL value to parse [%s] %s",
++			__func__, group, key);
++		return false;
++	}
++
++	*val = g_key_file_get_string(config, group, key, &err);
+ 	if (err) {
+ 		if (err->code != G_KEY_FILE_ERROR_KEY_NOT_FOUND)
+ 			DBG("%s", err->message);
+@@ -440,12 +445,7 @@ static bool parse_config_string(GKeyFile *config, const char *group,
+ 		return false;
+ 	}
+ 
+-	DBG("%s.%s = %s", group, key, tmp);
+-
+-	if (val) {
+-		g_free(*val);
+-		*val = tmp;
+-	}
++	DBG("%s.%s = %s", group, key, *val);
+ 
+ 	return true;
+ }
+@@ -1031,7 +1031,12 @@ static void parse_secure_conns(GKeyFile *config)
+ 
+ static void parse_general(GKeyFile *config)
+ {
+-	parse_config_string(config, "General", "Name", &btd_opts.name);
++	char *str = NULL;
++
++	if (parse_config_string(config, "General", "Name", &str)) {
++		g_free(btd_opts.name);
++		btd_opts.name = str;
++	}
+ 	parse_config_hex(config, "General", "Class", &btd_opts.class);
+ 	parse_config_u32(config, "General", "DiscoverableTimeout",
+ 						&btd_opts.discovto,
+-- 
+2.48.1
+
