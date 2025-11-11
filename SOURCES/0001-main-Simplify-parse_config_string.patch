@@ -1,4 +1,4 @@
-From 60b4624089e460a4908c1887de0e777c0453a503 Mon Sep 17 00:00:00 2001
+From 8cc47ce7b9bd16e560b5cf13a7c0e1ac612bf59a Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Fri, 10 May 2024 13:47:29 +0200
 Subject: [PATCH] main: Simplify parse_config_string()
@@ -29,7 +29,7 @@ bluez-5.75/src/main.c:440:2: leaked_storage: Variable "tmp" going out of scope l
  1 file changed, 14 insertions(+), 9 deletions(-)
 
 diff --git a/src/main.c b/src/main.c
-index d13ada2afc5b..bde63462ecda 100644
+index 3c51a0092425..4ac442b37a85 100644
 --- a/src/main.c
 +++ b/src/main.c
 @@ -430,9 +430,14 @@ static bool parse_config_string(GKeyFile *config, const char *group,
@@ -63,7 +63,7 @@ index d13ada2afc5b..bde63462ecda 100644
  
  	return true;
  }
-@@ -1031,7 +1031,12 @@ static void parse_secure_conns(GKeyFile *config)
+@@ -1022,7 +1022,12 @@ static void parse_secure_conns(GKeyFile *config)
  
  static void parse_general(GKeyFile *config)
  {
@@ -78,5 +78,5 @@ index d13ada2afc5b..bde63462ecda 100644
  	parse_config_u32(config, "General", "DiscoverableTimeout",
  						&btd_opts.discovto,
 -- 
-2.48.1
+2.49.0
 

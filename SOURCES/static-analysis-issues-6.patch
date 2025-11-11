@@ -1,4 +1,4 @@
-From bdf5fd2a0156e9070e1e55777b4a71033160fbf1 Mon Sep 17 00:00:00 2001
+From 36acca0e4f94bb926b16c2fe4536d416cdbf43e6 Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Wed, 17 Jul 2024 12:37:16 +0200
 Subject: [PATCH 1/8] sdp: Ensure size doesn't overflow
@@ -38,10 +38,10 @@ index 411a95b8a7d3..8a15ad803db1 100644
  		sent += n;
  	}
 -- 
-2.45.2
+2.49.0
 
 
-From 062c998fb5c407bc09d6124324b1bd393997bfee Mon Sep 17 00:00:00 2001
+From 70c6433630f168d46af905f3721663f8db475558 Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Thu, 18 Jul 2024 15:43:35 +0200
 Subject: [PATCH 2/8] tools/isotest: Ensure ret doesn't overflow
@@ -73,10 +73,10 @@ index 2cac0e49cc39..0805faa66e47 100644
  		ret += len;
  		usleep(1000);
 -- 
-2.45.2
+2.49.0
 
 
-From 122a888962765010162306f19fccf77333e1bc1b Mon Sep 17 00:00:00 2001
+From ce244bd2d24e95017df2e1dea6c3e90a662d05da Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Thu, 18 Jul 2024 15:45:47 +0200
 Subject: [PATCH 3/8] health: mcap: Ensure sent doesn't overflow
@@ -108,10 +108,10 @@ index 2e4214a6984f..b3bf403e74d2 100644
  		sent += n;
  	}
 -- 
-2.45.2
+2.49.0
 
 
-From fce37c2100a043fce99fbe2e8c8171406b841fae Mon Sep 17 00:00:00 2001
+From cac8152c9e741c7d7c939bd755c55295338b0a7e Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Fri, 19 Jul 2024 11:26:45 +0200
 Subject: [PATCH 4/8] shared/tester: Add early failure check
@@ -133,7 +133,7 @@ bluez-5.77/src/shared/tester.c:948:2: overrun-buffer-arg: Calling "tester_monito
  1 file changed, 2 insertions(+)
 
 diff --git a/src/shared/tester.c b/src/shared/tester.c
-index 56c8cba6f578..3053025d7945 100644
+index 371ccacedc66..1086a80363db 100644
 --- a/src/shared/tester.c
 +++ b/src/shared/tester.c
 @@ -945,6 +945,8 @@ static bool test_io_send(struct io *io, void *user_data)
@@ -146,10 +146,10 @@ index 56c8cba6f578..3053025d7945 100644
  
  	g_assert_cmpint(len, ==, iov->iov_len);
 -- 
-2.45.2
+2.49.0
 
 
-From 5078e205d5892048cb1243ce2977dcf8eb0c02fc Mon Sep 17 00:00:00 2001
+From 916115b8a4aeab9d10a2984a6593d93dcf5a30c2 Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Mon, 29 Jul 2024 13:53:41 +0200
 Subject: [PATCH 5/8] mesh: Fix possible integer overflow
@@ -170,10 +170,10 @@ X
  1 file changed, 11 insertions(+), 2 deletions(-)
 
 diff --git a/mesh/net.c b/mesh/net.c
-index 05ca48326fc5..ef6a3133859a 100644
+index cc862dade5ae..2483e23c4229 100644
 --- a/mesh/net.c
 +++ b/mesh/net.c
-@@ -3149,13 +3149,22 @@ static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
+@@ -3150,13 +3150,22 @@ static bool send_seg(struct mesh_net *net, uint8_t cnt, uint16_t interval,
  	uint32_t seq_num;
  
  	if (msg->segmented) {
@@ -199,10 +199,10 @@ index 05ca48326fc5..ef6a3133859a 100644
  		/* Send on same seq_num used for Access Layer */
  		seq_num = msg->seqAuth;
 -- 
-2.45.2
+2.49.0
 
 
-From c37f2cdd4b8fa66fc97d423c4c980865b4793ef2 Mon Sep 17 00:00:00 2001
+From 51a597594dadb8150348d3a9ecb403db0cc75316 Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Fri, 19 Jul 2024 14:27:54 +0200
 Subject: [PATCH 6/8] shared/gatt-db: Fix possible buffer overrun
@@ -229,10 +229,10 @@ bluez-5.77/src/shared/gatt-db.c:614:2: overrun-buffer-arg: Overrunning array "va
  1 file changed, 8 insertions(+), 3 deletions(-)
 
 diff --git a/src/shared/gatt-db.c b/src/shared/gatt-db.c
-index b35763410d17..cd0eba6bf1d0 100644
+index 8951079beef1..c990dcd057eb 100644
 --- a/src/shared/gatt-db.c
 +++ b/src/shared/gatt-db.c
-@@ -560,9 +560,14 @@ static int uuid_to_le(const bt_uuid_t *uuid, uint8_t *dst)
+@@ -566,9 +566,14 @@ static int uuid_to_le(const bt_uuid_t *uuid, uint8_t *dst)
  		return bt_uuid_len(uuid);
  	}
  
@@ -251,10 +251,10 @@ index b35763410d17..cd0eba6bf1d0 100644
  
  static bool le_to_uuid(const uint8_t *src, size_t len, bt_uuid_t *uuid)
 -- 
-2.45.2
+2.49.0
 
 
-From b7cb9a4bc9b94ded15be812d1d444d0ace4a886d Mon Sep 17 00:00:00 2001
+From 4b38628a0602417a79e50a0d9219e3b8917082de Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Fri, 19 Jul 2024 11:29:15 +0200
 Subject: [PATCH 7/8] shared/btsnoop: Avoid underflowing toread variable
@@ -297,10 +297,10 @@ index bc5f7fcbe84c..bb0bccf0dd01 100644
  	if (len < 0) {
  		btsnoop->aborted = true;
 -- 
-2.45.2
+2.49.0
 
 
-From 354babc88eb98970a9f59056b41854b0f0f87859 Mon Sep 17 00:00:00 2001
+From bf3eaaef06637a1597e86e03f10c0eb8b3b0139e Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Fri, 19 Jul 2024 15:14:26 +0200
 Subject: [PATCH 8/8] monitor: Check for possible integer underflow
@@ -349,5 +349,5 @@ index 009cf15209f0..62857b4b84de 100644
  
  	data->offset += len;
 -- 
-2.45.2
+2.49.0
 

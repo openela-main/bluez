@@ -5,16 +5,14 @@
 %endif
 
 Name:    bluez
-Version: 5.77
-Release: 6%{?dist}
+Version: 5.83
+Release: 2%{?dist}
 Summary: Bluetooth utilities
 License: GPL-2.0-or-later
 URL:     http://www.bluez.org/
 
 Source0: https://www.kernel.org/pub/linux/bluetooth/%{name}-%{version}.tar.xz
 
-# Upstream patches
-Patch0: 5.77-devel.patch
 # https://patchwork.kernel.org/project/bluetooth/patch/20240702084900.773620-2-hadess@hadess.net/
 Patch1: 0001-main-Simplify-parse_config_string.patch
 # https://patchwork.kernel.org/project/bluetooth/patch/20240704102617.1132337-4-hadess@hadess.net/
@@ -23,6 +21,7 @@ Patch2: 0001-shared-shell-Free-memory-allocated-by-wordexp.patch
 Patch3: static-analysis-issues-6.patch
 # Coverity downstream patches
 Patch4: coverity-workarounds.patch
+Patch5: 5.83-fixes.patch
 
 BuildRequires: dbus-devel >= 1.6
 BuildRequires: glib2-devel
@@ -268,6 +267,7 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_datadir}/dbus-1/system.d/bluetooth.conf
 %{_datadir}/dbus-1/system-services/org.bluez.service
 %{_unitdir}/bluetooth.service
+%{_userunitdir}/mpris-proxy.service
 %{_datadir}/zsh/site-functions/_bluetoothctl
 
 %if %{with deprecated}
@@ -305,7 +305,10 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_mandir}/man1/l2ping.1.*
 %{_mandir}/man1/rctest.1.*
 %{_mandir}/man5/org.bluez.*.5.*
+%{_mandir}/man7/hci.7.*
 %{_mandir}/man7/l2cap.7.*
+%{_mandir}/man7/mgmt.7.*
+%{_mandir}/man7/sco.7.*
 %{_mandir}/man7/rfcomm.7.*
 %{_libdir}/libbluetooth.so
 %{_includedir}/bluetooth
@@ -336,9 +339,26 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_libexecdir}/bluetooth/obexd
 %{_datadir}/dbus-1/services/org.bluez.obex.service
 /usr/lib/systemd/user/dbus-org.bluez.obex.service
+%{_datadir}/dbus-1/system.d/obex.conf
 %{_userunitdir}/obex.service
 
 %changelog
+* Mon Aug 18 2025 Bastien Nocera <bnocera@redhat.com> - 5.83-2
+- Fix problem with menu handling
+  Resolves: RHEL-103965
+
+* Fri Jun 13 2025 Bastien Nocera <bnocera@redhat.com> - 5.83-1
+- Update to 5.83
+- Resolves: RHEL-94817
+
+* Mon Apr 28 2025 Bastien Nocera <bnocera@redhat.com> - 5.77-8
+- Fix startup warnings
+- Resolves: RHEL-88703
+
+* Tue Feb 11 2025 Bastien Nocera <bnocera@redhat.com> - 5.77-7
+- Add OSCI tests
+- Resolves: RHEL-77171
+
 * Mon Feb 10 2025 Bastien Nocera <bnocera@redhat.com> - 5.77-6
 - Fix config not being applied
 - Resolves: RHEL-78405
