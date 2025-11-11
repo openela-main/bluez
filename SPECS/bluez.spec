@@ -5,8 +5,8 @@
 %endif
 
 Name:    bluez
-Version: 5.72
-Release: 4%{?dist}
+Version: 5.83
+Release: 2%{?dist}
 Summary: Bluetooth utilities
 License: GPLv2+
 URL:     http://www.bluez.org/
@@ -18,9 +18,8 @@ Source1: bluez.gitignore
 Patch1: 0001-obex-Use-GLib-helper-function-to-manipulate-paths.patch
 # https://patchwork.kernel.org/project/bluetooth/patch/20240214155019.325715-1-hadess@hadess.net/
 Patch2: 0001-Add-missing-mesh-gatt-JSON-files.patch
-# https://git.kernel.org/pub/scm/bluetooth/bluez.git/commit/?id=fdcde2ce2112df852ab3df6e49b158621177f946
-# https://git.kernel.org/pub/scm/bluetooth/bluez.git/commit/?id=252883241228f3149566f119336ce2c49a8d861e
-Patch3: plugin_init-startup-warnings.patch
+# Upstream fixes
+Patch3: 5.83-fixes.patch
 
 BuildRequires: dbus-devel >= 1.6
 BuildRequires: glib2-devel
@@ -239,6 +238,8 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 # https://github.com/bluez/bluez/issues/329#issuecomment-1102459104
 %attr(0555, root, root) %dir %{_sysconfdir}/bluetooth
 %config %{_sysconfdir}/bluetooth/main.conf
+%config(noreplace) %{_sysconfdir}/bluetooth/input.conf
+%config(noreplace) %{_sysconfdir}/bluetooth/network.conf
 %{_bindir}/avinfo
 %{_bindir}/bluemoon
 %{_bindir}/bluetoothctl
@@ -262,6 +263,7 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_datadir}/dbus-1/system-services/org.bluez.service
 %{_datadir}/dbus-1/system.d/bluetooth.conf
 %{_unitdir}/bluetooth.service
+%{_userunitdir}/mpris-proxy.service
 %{_datadir}/zsh/site-functions/_bluetoothctl
 
 %if %{with deprecated}
@@ -298,6 +300,11 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_mandir}/man1/isotest.1.*
 %{_mandir}/man1/rctest.1.*
 %{_mandir}/man5/org.bluez.*.5.*
+%{_mandir}/man7/hci.7.*
+%{_mandir}/man7/l2cap.7.*
+%{_mandir}/man7/mgmt.7.*
+%{_mandir}/man7/rfcomm.7.*
+%{_mandir}/man7/sco.7.*
 %{_libdir}/pkgconfig/bluez.pc
 %dir %{_libexecdir}/bluetooth
 %{_libexecdir}/bluetooth/btvirt
@@ -326,9 +333,21 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %files obexd
 %{_libexecdir}/bluetooth/obexd
 %{_datadir}/dbus-1/services/org.bluez.obex.service
+/usr/lib/systemd/user/dbus-org.bluez.obex.service
+%{_datadir}/dbus-1/system.d/obex.conf
 %{_userunitdir}/obex.service
 
 %changelog
+* Mon Aug 18 2025 Bastien Nocera <bnocera@redhat.com> - 5.83-1
+- Fix problem with menu handling
+  Resolves: RHEL-103966
+
+* Fri Jun 13 2025 Bastien Nocera <bnocera@redhat.com> - 5.83-1
+- Update to 5.83
+  Resolves: RHEL-94819
+  Resolves: RHEL-56073
+  Resolves: RHEL-1924
+
 * Fri Jan 24 2025 Bastien Nocera <bnocera@redhat.com> - 5.72-4
 - Fix plugin_init() startup warnings
   Related: RHEL-68934
