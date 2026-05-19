@@ -1,4 +1,4 @@
-From 10631ec6213213085de4da0f274b8f608e29053f Mon Sep 17 00:00:00 2001
+From 25fe0919b7c20f68e15a90a0b012283d9a9a291a Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Mon, 5 Aug 2024 12:17:29 +0200
 Subject: [PATCH 1/8] monitor: Work-around overflow_sink Case #01164573
@@ -10,10 +10,10 @@ and exit the function if it is.
  1 file changed, 1 insertion(+)
 
 diff --git a/monitor/control.c b/monitor/control.c
-index 62857b4b84de..40e8a3a90c05 100644
+index e43caa113181..e72d9f118388 100644
 --- a/monitor/control.c
 +++ b/monitor/control.c
-@@ -1102,6 +1102,7 @@ static void client_callback(int fd, uint32_t events, void *user_data)
+@@ -1158,6 +1158,7 @@ static void client_callback(int fd, uint32_t events, void *user_data)
  	    UINT16_MAX - data->offset > len)
  		return;
  
@@ -22,10 +22,10 @@ index 62857b4b84de..40e8a3a90c05 100644
  
  	while (data->offset >= MGMT_HDR_SIZE) {
 -- 
-2.49.0
+2.52.0
 
 
-From 9dc3bf02dec24eaf4577e7f0a44618c6a3e83a44 Mon Sep 17 00:00:00 2001
+From b28e1455326f7c8abfe1138050fa3877aafd9548 Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Tue, 30 Jul 2024 15:45:18 +0200
 Subject: [PATCH 2/8] mesh/net: Work-around memory overallocation warning
@@ -47,10 +47,10 @@ bluez-5.77/mesh/net.c:3316:2: overrun-buffer-arg: Overrunning array "payload->bu
  1 file changed, 1 insertion(+)
 
 diff --git a/mesh/net.c b/mesh/net.c
-index 2483e23c4229..466a12833117 100644
+index d779437179d9..cd84ac76492a 100644
 --- a/mesh/net.c
 +++ b/mesh/net.c
-@@ -3307,6 +3307,7 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
+@@ -3286,6 +3286,7 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
  
  	/* Setup OTA Network send */
  	payload = mesh_sar_new(msg_len);
@@ -59,10 +59,10 @@ index 2483e23c4229..466a12833117 100644
  	payload->len = msg_len;
  	payload->src = src;
 -- 
-2.49.0
+2.52.0
 
 
-From a42b6e001d6c96f7bca276f022925b3cfe10af83 Mon Sep 17 00:00:00 2001
+From 009de66b7f075579ad9f7ee8311de58993d214ba Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Wed, 17 Jul 2024 12:51:56 +0200
 Subject: [PATCH 3/8] shared/shell: Work-around SAT-45980 with wordexp()
@@ -82,10 +82,10 @@ bluez-5.77/src/shared/shell.c:558:3: leaked_storage: Variable "w" going out of s
  1 file changed, 1 insertion(+)
 
 diff --git a/src/shared/shell.c b/src/shared/shell.c
-index cac19d6307c6..773d80e14b8f 100644
+index ea285c72631d..72423f8f7e67 100644
 --- a/src/shared/shell.c
 +++ b/src/shared/shell.c
-@@ -609,6 +609,7 @@ optional:
+@@ -597,6 +597,7 @@ optional:
  		print_text(COLOR_HIGHLIGHT,
  			"Unable to parse optional command arguments: %s", opt);
  		free(opt);
@@ -94,10 +94,10 @@ index cac19d6307c6..773d80e14b8f 100644
  	}
  
 -- 
-2.49.0
+2.52.0
 
 
-From c36f13f3b34d434fc275a1bab18c1064959e3bf0 Mon Sep 17 00:00:00 2001
+From f26dcbdc7e0a4f3c07cdb3ecf4e18d48b5978642 Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Wed, 17 Jul 2024 11:28:17 +0200
 Subject: [PATCH 4/8] sdp: Work-around #01163325 with single-linked list
@@ -147,14 +147,14 @@ bluez-5.77/src/sdp-client.c:197:3: overwrite_var: Overwriting "recs" in "recs = 
 198|	} while (scanned < (ssize_t) size && bytesleft > 0);
 199|
 ---
- lib/sdp.c        | 2 ++
- src/sdp-client.c | 1 +
+ lib/bluetooth/sdp.c | 2 ++
+ src/sdp-client.c    | 1 +
  2 files changed, 3 insertions(+)
 
-diff --git a/lib/sdp.c b/lib/sdp.c
-index 8a15ad803db1..99efbc19c299 100644
---- a/lib/sdp.c
-+++ b/lib/sdp.c
+diff --git a/lib/bluetooth/sdp.c b/lib/bluetooth/sdp.c
+index ce34bb7d3f1d..780ac46febc8 100644
+--- a/lib/bluetooth/sdp.c
++++ b/lib/bluetooth/sdp.c
 @@ -1893,9 +1893,11 @@ static int sdp_get_proto_descs(uint16_t attr_id, const sdp_record_t *rec,
  				sdp_list_free(pds, NULL);
  				goto failed;
@@ -168,7 +168,7 @@ index 8a15ad803db1..99efbc19c299 100644
  	}
  
 diff --git a/src/sdp-client.c b/src/sdp-client.c
-index 71d3d9e95044..2f043cb7f010 100644
+index 4f35cf1b7a8f..c1d99dcc23a8 100644
 --- a/src/sdp-client.c
 +++ b/src/sdp-client.c
 @@ -194,6 +194,7 @@ static void search_completed_cb(uint8_t type, uint16_t status,
@@ -180,10 +180,10 @@ index 71d3d9e95044..2f043cb7f010 100644
  	} while (scanned < (ssize_t) size && bytesleft > 0);
  
 -- 
-2.49.0
+2.52.0
 
 
-From 4fa100763db20e02af1956e970df8b29beb02907 Mon Sep 17 00:00:00 2001
+From 0e4e3849c3c0563585ff6029ef8ecce8235a06d7 Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Thu, 18 Jul 2024 15:05:07 +0200
 Subject: [PATCH 5/8] mesh: Quiet imprecise "overrun-buffer-val" #01163326
@@ -233,7 +233,7 @@ bluez-5.77/mesh/net.c:2053:3: overrun-buffer-val: Overrunning array "sar_in->buf
  2 files changed, 5 insertions(+)
 
 diff --git a/mesh/friend.c b/mesh/friend.c
-index 6aacf6338f24..3265412f9af5 100644
+index 1c60705e046c..dc406d3da610 100644
 --- a/mesh/friend.c
 +++ b/mesh/friend.c
 @@ -325,6 +325,7 @@ static void clear_retry(struct l_timeout *timeout, void *user_data)
@@ -245,10 +245,10 @@ index 6aacf6338f24..3265412f9af5 100644
  			mesh_net_get_iv_index(neg->net), DEFAULT_TTL,
  			0, 0, neg->old_friend,
 diff --git a/mesh/net.c b/mesh/net.c
-index 466a12833117..fd5c3fb63100 100644
+index cd84ac76492a..783b983b0d98 100644
 --- a/mesh/net.c
 +++ b/mesh/net.c
-@@ -274,6 +274,7 @@ static void send_hb_publication(void *data)
+@@ -257,6 +257,7 @@ static void send_hb_publication(void *data)
  	l_put_be16(net->features, msg + n);
  	n += 2;
  
@@ -256,7 +256,7 @@ index 466a12833117..fd5c3fb63100 100644
  	mesh_net_transport_send(net, 0, 0, mesh_net_get_iv_index(net),
  					pub->ttl, 0, 0, pub->dst, msg, n);
  }
-@@ -1461,6 +1462,7 @@ static void send_frnd_ack(struct mesh_net *net, uint16_t src, uint16_t dst,
+@@ -1444,6 +1445,7 @@ static void send_frnd_ack(struct mesh_net *net, uint16_t src, uint16_t dst,
  		friend_ack_rxed(net, mesh_net_get_iv_index(net),
  				mesh_net_next_seq_num(net), 0, dst, msg);
  	} else {
@@ -264,7 +264,7 @@ index 466a12833117..fd5c3fb63100 100644
  		mesh_net_transport_send(net, 0, 0,
  				mesh_net_get_iv_index(net), DEFAULT_TTL,
  				0, 0, dst, msg, sizeof(msg));
-@@ -1496,6 +1498,7 @@ static void send_net_ack(struct mesh_net *net, struct mesh_sar *sar,
+@@ -1479,6 +1481,7 @@ static void send_net_ack(struct mesh_net *net, struct mesh_sar *sar,
  		return;
  	}
  
@@ -272,7 +272,7 @@ index 466a12833117..fd5c3fb63100 100644
  	mesh_net_transport_send(net, 0, sar->net_idx,
  				mesh_net_get_iv_index(net), DEFAULT_TTL,
  				0, src, dst, msg,
-@@ -2051,6 +2054,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
+@@ -2034,6 +2037,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
  		/* Got it all */
  		send_net_ack(net, sar_in, expected);
  
@@ -281,10 +281,10 @@ index 466a12833117..fd5c3fb63100 100644
  				sar_in->remote, dst, key_aid, true, szmic,
  				sar_in->seqZero, sar_in->buf, sar_in->len);
 -- 
-2.49.0
+2.52.0
 
 
-From d81b03e2e7da40ee8024f2a5bee6e873f0bf7607 Mon Sep 17 00:00:00 2001
+From 390125524200bf3750e716f154288d4c2810c8c4 Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Thu, 18 Jul 2024 15:37:58 +0200
 Subject: [PATCH 6/8] mesh: Quiet imprecise "overrun-buffer-val" #01163327
@@ -327,10 +327,10 @@ bluez-5.77/mesh/net.c:3284:2: overrun-call: Overrunning callee's array of size 1
  1 file changed, 3 insertions(+)
 
 diff --git a/mesh/net.c b/mesh/net.c
-index fd5c3fb63100..dff4b02e459a 100644
+index 783b983b0d98..e344031ac7a7 100644
 --- a/mesh/net.c
 +++ b/mesh/net.c
-@@ -1777,6 +1777,7 @@ static bool msg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
+@@ -1760,6 +1760,7 @@ static bool msg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
  			hdr |= SEG_MAX(true, size) << SEGN_HDR_SHIFT;
  		}
  
@@ -338,7 +338,7 @@ index fd5c3fb63100..dff4b02e459a 100644
  		if (friend_packet_queue(net, iv_index, false, frnd_ttl,
  					seq, src, dst,
  					hdr, data, size))
-@@ -2055,6 +2056,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
+@@ -2038,6 +2039,7 @@ static bool seg_rxed(struct mesh_net *net, bool frnd, uint32_t iv_index,
  		send_net_ack(net, sar_in, expected);
  
  		/* coverity[overrun-buffer-val] : FALSE */
@@ -346,7 +346,7 @@ index fd5c3fb63100..dff4b02e459a 100644
  		msg_rxed(net, frnd, iv_index, ttl, seq, net_idx,
  				sar_in->remote, dst, key_aid, true, szmic,
  				sar_in->seqZero, sar_in->buf, sar_in->len);
-@@ -3290,6 +3292,7 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
+@@ -3269,6 +3271,7 @@ bool mesh_net_app_send(struct mesh_net *net, bool frnd_cred, uint16_t src,
  	segmented |= !!(seg_max);
  
  	/* First enqueue to any Friends and internal models */
@@ -355,10 +355,10 @@ index fd5c3fb63100..dff4b02e459a 100644
  				key_aid, segmented, szmic, seq & SEQ_ZERO_MASK,
  				msg, msg_len);
 -- 
-2.49.0
+2.52.0
 
 
-From cadfe79f64ab0ad1cc7682196c4746b270bd0e81 Mon Sep 17 00:00:00 2001
+From 516eb5fada822b0d12cd5ae195b07b459245f3aa Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Fri, 19 Jul 2024 15:06:24 +0200
 Subject: [PATCH 7/8] shared/gatt-db: Work-around overrun-buffer-arg case
@@ -416,7 +416,7 @@ bluez-5.77/src/shared/gatt-db.c:1006:3: overrun-buffer-arg: Overrunning array "v
  1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/src/shared/gatt-db.c b/src/shared/gatt-db.c
-index c990dcd057eb..9de76c76bc33 100644
+index a2bc41a82fbe..dcff5a1d9838 100644
 --- a/src/shared/gatt-db.c
 +++ b/src/shared/gatt-db.c
 @@ -622,6 +622,7 @@ static struct gatt_db_service *gatt_db_service_create(const bt_uuid_t *uuid,
@@ -427,7 +427,7 @@ index c990dcd057eb..9de76c76bc33 100644
  	service->attributes[0] = new_attribute(service, handle, type, value,
  									len);
  	if (!service->attributes[0]) {
-@@ -986,6 +987,7 @@ service_insert_characteristic(struct gatt_db_service *service,
+@@ -987,6 +988,7 @@ service_insert_characteristic(struct gatt_db_service *service,
  	len += sizeof(uint16_t);
  	len += uuid_to_le(uuid, &value[3]);
  
@@ -435,9 +435,9 @@ index c990dcd057eb..9de76c76bc33 100644
  	service->attributes[i] = new_attribute(service, handle,
  							&characteristic_uuid,
  							value, len);
-@@ -1017,8 +1019,11 @@ service_insert_characteristic(struct gatt_db_service *service,
- 	if (!(*chrc) || !(*chrc)->value)
+@@ -1021,8 +1023,11 @@ service_insert_characteristic(struct gatt_db_service *service,
  		return NULL;
+ 	}
  
 -	if (memcmp((*chrc)->value, value, len))
 +	/* coverity[overrun-buffer-arg] : FALSE */
@@ -449,10 +449,10 @@ index c990dcd057eb..9de76c76bc33 100644
  	set_attribute_data(service->attributes[i], read_func, write_func,
  							permissions, user_data);
 -- 
-2.49.0
+2.52.0
 
 
-From 88ce195aa191ab97f9a6b86d0234011658b68b5e Mon Sep 17 00:00:00 2001
+From 01c3ab5c8eb65bc038a4c3c955ff3b5e27861512 Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Tue, 30 Jul 2024 15:27:49 +0200
 Subject: [PATCH 8/8] shared/btsnoop: Work-around underflow case #01163329
@@ -477,5 +477,5 @@ index bb0bccf0dd01..12f960ec353d 100644
  
  		*index = 0;
 -- 
-2.49.0
+2.52.0
 

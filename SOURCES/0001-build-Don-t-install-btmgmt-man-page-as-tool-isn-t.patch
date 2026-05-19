@@ -1,0 +1,27 @@
+From c9ec6137b16aaf371b311f4777a042ec1175719b Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Thu, 29 Jan 2026 13:40:52 +0100
+Subject: [PATCH] build: Don't install btmgmt man page as tool isn't
+
+The btmgmt tool isn't installed through the Makefiles, so the
+man page shouldn't be installed either.
+---
+ Makefile.tools | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile.tools b/Makefile.tools
+index 561b03d0b95b..f0b106fae7ef 100644
+--- a/Makefile.tools
++++ b/Makefile.tools
+@@ -355,7 +355,7 @@ profiles_iap_iapd_LDADD = gdbus/libgdbus-internal.la $(GLIB_LIBS) $(DBUS_LIBS)
+ 
+ if MANPAGES
+ man_MANS += tools/rctest.1 tools/l2ping.1 tools/btattach.1 tools/isotest.1 \
+-		tools/btmgmt.1 client/bluetoothctl.1 \
++		client/bluetoothctl.1 \
+ 		client/bluetoothctl-mgmt.1 \
+ 		client/bluetoothctl-monitor.1 client/bluetoothctl-admin.1 \
+ 		client/bluetoothctl-advertise.1 client/bluetoothctl-endpoint.1 \
+-- 
+2.52.0
+

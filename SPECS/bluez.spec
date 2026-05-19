@@ -5,8 +5,8 @@
 %endif
 
 Name:    bluez
-Version: 5.83
-Release: 2%{?dist}
+Version: 5.85
+Release: 1%{?dist}
 Summary: Bluetooth utilities
 License: GPL-2.0-or-later
 URL:     http://www.bluez.org/
@@ -21,7 +21,8 @@ Patch2: 0001-shared-shell-Free-memory-allocated-by-wordexp.patch
 Patch3: static-analysis-issues-6.patch
 # Coverity downstream patches
 Patch4: coverity-workarounds.patch
-Patch5: 5.83-fixes.patch
+# https://patchwork.kernel.org/project/bluetooth/patch/20260129125948.2724071-2-hadess@hadess.net/
+Patch5: 0001-build-Don-t-install-btmgmt-man-page-as-tool-isn-t.patch
 
 BuildRequires: dbus-devel >= 1.6
 BuildRequires: glib2-devel
@@ -175,11 +176,6 @@ install -m0755 attrib/gatttool $RPM_BUILD_ROOT%{_bindir}
 # Red Hat Bugzilla bug #1699680
 install -m0755 tools/avinfo $RPM_BUILD_ROOT%{_bindir}
 
-# btmgmt is not installed by "make install", but it is useful for debugging
-# some issues and to set the MAC address on HCIs which don't have their
-# MAC address configured 
-install -m0755 tools/btmgmt $RPM_BUILD_ROOT%{_bindir}
-
 # Remove libtool archive
 find $RPM_BUILD_ROOT -name '*.la' -delete
 
@@ -248,13 +244,11 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_bindir}/bluemoon
 %{_bindir}/bluetoothctl
 %{_bindir}/btattach
-%{_bindir}/btmgmt
 %{_bindir}/btmon
 %{_bindir}/hex2hcd
 %{_bindir}/mpris-proxy
 %{_mandir}/man1/bluetoothctl.1.*
 %{_mandir}/man1/bluetoothctl-*.1.*
-%{_mandir}/man1/btmgmt.1.*
 %{_mandir}/man1/btattach.1.*
 %{_mandir}/man1/btmon.1.*
 %{_mandir}/man8/bluetoothd.8.*
@@ -306,6 +300,7 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_mandir}/man1/rctest.1.*
 %{_mandir}/man5/org.bluez.*.5.*
 %{_mandir}/man7/hci.7.*
+%{_mandir}/man7/iso.7.*
 %{_mandir}/man7/l2cap.7.*
 %{_mandir}/man7/mgmt.7.*
 %{_mandir}/man7/sco.7.*
@@ -343,6 +338,10 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_userunitdir}/obex.service
 
 %changelog
+* Mon Jan 26 2026 Bastien Nocera <bnocera@redhat.com> - 5.85-1
+- Update to 5.85
+  Resolves: RHEL-142551
+
 * Mon Aug 18 2025 Bastien Nocera <bnocera@redhat.com> - 5.83-2
 - Fix problem with menu handling
   Resolves: RHEL-103965
