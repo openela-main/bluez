@@ -4,8 +4,15 @@
 %bcond_with deprecated
 %endif
 
+# Snapshot generated with:
+# git config tar.tar.xz.command "xz -c"
+# export SHA=`git rev-parse --short HEAD` ; export VERSION=5.86 ; git archive --format=tar.xz -o bluez-$VERSION+1.git$SHA.tar.xz --prefix=bluez-$VERSION+1.git$SHA/ HEAD
+# as a post-release snapshot, see:
+# https://fedoraproject.org/wiki/PackagingDrafts/TildeVersioning
+%global gitsha 30db66dc971b
+
 Name:    bluez
-Version: 5.85
+Version: 5.87+1.git%{gitsha}
 Release: 1%{?dist}
 Summary: Bluetooth utilities
 License: GPLv2+
@@ -16,10 +23,8 @@ Source1: bluez.gitignore
 
 # https://github.com/hadess/bluez/commits/obex-5.46
 Patch1: 0001-obex-Use-GLib-helper-function-to-manipulate-paths.patch
-# https://patchwork.kernel.org/project/bluetooth/patch/20240214155019.325715-1-hadess@hadess.net/
-Patch2: 0001-Add-missing-mesh-gatt-JSON-files.patch
-# https://patchwork.kernel.org/project/bluetooth/patch/20260129125948.2724071-2-hadess@hadess.net/
-Patch3: 0001-build-Don-t-install-btmgmt-man-page-as-tool-isn-t.patch
+# https://patchwork.kernel.org/project/bluetooth/patch/20260616085538.3568474-1-hadess@hadess.net/
+Patch2: 0001-hci-tester-Work-around-possible-string-overflow.patch
 
 BuildRequires: dbus-devel >= 1.6
 BuildRequires: glib2-devel
@@ -148,6 +153,7 @@ Object Exchange daemon for sharing files, contacts etc over bluetooth
 autoreconf -vif
 %configure --enable-tools --enable-library --disable-optimization \
            --enable-deprecated \
+           --enable-external-ell \
            --enable-sixaxis --enable-cups --enable-nfc --enable-mesh \
            --enable-hid2hci --enable-testing \
            --with-systemdsystemunitdir=%{_unitdir} \
@@ -171,6 +177,12 @@ done
 # "make install" fails to install avinfo
 # Red Hat Bugzilla bug #1699680
 install -m0755 tools/avinfo $RPM_BUILD_ROOT%{_bindir}
+
+# btmgmt is not installed by "make install", but it is useful for debugging
+# some issues and to set the MAC address on HCIs which don't have their
+# MAC address configured 
+install -m0755 tools/btmgmt $RPM_BUILD_ROOT%{_bindir}
+rst2man doc/btmgmt.rst --no-datestamp --no-generator $RPM_BUILD_ROOT%{_mandir}/man1/btmgmt.1
 
 # Remove libtool archive
 find $RPM_BUILD_ROOT -name '*.la' -delete
@@ -239,12 +251,14 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_bindir}/bluemoon
 %{_bindir}/bluetoothctl
 %{_bindir}/btattach
+%{_bindir}/btmgmt
 %{_bindir}/btmon
 %{_bindir}/hex2hcd
 %{_bindir}/l2ping
 %{_bindir}/mpris-proxy
 %{_mandir}/man1/bluetoothctl.1.*
 %{_mandir}/man1/bluetoothctl-*.1.*
+%{_mandir}/man1/btmgmt.1.*
 %{_mandir}/man1/btattach.1.*
 %{_mandir}/man1/btmon.1.*
 %{_mandir}/man1/l2ping.1.*
@@ -293,6 +307,7 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_mandir}/man1/isotest.1.*
 %{_mandir}/man1/rctest.1.*
 %{_mandir}/man5/org.bluez.*.5.*
+%{_mandir}/man7/btsnoop.7.*
 %{_mandir}/man7/hci.7.*
 %{_mandir}/man7/iso.7.*
 %{_mandir}/man7/l2cap.7.*
@@ -332,6 +347,21 @@ install emulator/btvirt ${RPM_BUILD_ROOT}/%{_libexecdir}/bluetooth/
 %{_userunitdir}/obex.service
 
 %changelog
+* Thu Jul 16 2026 Bastien Nocera <bnocera@redhat.com> - 5.87+1.git30db66dc971b-1
+- Update to 5.87 post-release snapshot
+  Resolves: RHEL-193097
+
+* Mon Jun 29 2026 Bastien Nocera <bnocera@redhat.com> - 5.86-2
+- Fix BLE advertisments
+  Resolves: RHEL-186503
+
+* Tue Feb 10 2026 Bastien Nocera <bnocera@redhat.com> - 5.86-1
+- Update to 5.86
+- Re-add btmgmt as it does not require bluetoothd to be running,
+  unlike bluetoothctl mgmt
+- Fix audio output not working in some circumstances
+  Resolves: RHEL-155508
+
 * Mon Jan 26 2026 Bastien Nocera <bnocera@redhat.com> - 5.85-1
 - Update to 5.85
   Resolves: RHEL-142552
