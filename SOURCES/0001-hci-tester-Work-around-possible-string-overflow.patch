@@ -1,0 +1,39 @@
+From 8440635a802cc4a8f529f9b1f6933a5fad2aa8d4 Mon Sep 17 00:00:00 2001
+From: Bastien Nocera <hadess@hadess.net>
+Date: Tue, 16 Jun 2026 10:52:58 +0200
+Subject: [PATCH] hci-tester: Work-around possible string overflow
+
+Quiet overflow warning by checking for a non-NULL destination.
+
+In function 'memcpy',
+    inlined from 'test_pre_setup_lt_address' at tools/hci-tester.c:67:2:
+/usr/include/bits/string_fortified.h:29:10: warning: '__builtin_memcpy' writing 6 bytes into a region of size 0 overflows the destination [-Wstringop-overflow=]
+   29 |   return __builtin___memcpy_chk (__dest, __src, __len,
+      |          ^
+---
+ tools/hci-tester.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/tools/hci-tester.c b/tools/hci-tester.c
+index b8446ee83ccf..c9e7c58d2e95 100644
+--- a/tools/hci-tester.c
++++ b/tools/hci-tester.c
+@@ -12,6 +12,7 @@
+ #include <config.h>
+ #endif
+ 
++#include <assert.h>
+ #include <stdlib.h>
+ #include <string.h>
+ 
+@@ -57,6 +58,7 @@ static void test_pre_setup_lt_address(const void *data, uint8_t size,
+ 	struct user_data *user = tester_get_data();
+ 	const struct bt_hci_rsp_read_bd_addr *rsp = data;
+ 
++	assert(user);
+ 	if (rsp->status) {
+ 		tester_warn("Read lower tester address failed (0x%02x)",
+ 								rsp->status);
+-- 
+2.54.0
+

@@ -76,41 +76,6 @@ index e3d2d63ce1ff..b803dbf14dac 100644
 2.52.0
 
 
-From 9089d3c9c92d19ffcbe3e6f679a7894600ab46af Mon Sep 17 00:00:00 2001
-From: Bastien Nocera <hadess@hadess.net>
-Date: Thu, 18 Jul 2024 15:45:47 +0200
-Subject: [PATCH 3/8] health: mcap: Ensure sent doesn't overflow
-
-Error: INTEGER_OVERFLOW (CWE-190): [#def13] [important]
-bluez-5.77/profiles/health/mcap.c:390:2: tainted_data_argument: The check "sent < size" contains the tainted expression "sent" which causes "size" to be considered tainted.
-bluez-5.77/profiles/health/mcap.c:391:3: overflow: The expression "size - sent" is deemed overflowed because at least one of its arguments has overflowed.
-bluez-5.77/profiles/health/mcap.c:391:3: overflow_sink: "size - sent", which might have underflowed, is passed to "write(sock, buf_b + sent, size - sent)".
-389|
-390|	while (sent < size) {
-391|->		int n = write(sock, buf_b + sent, size - sent);
-392|		if (n < 0)
-393|			return -1;
----
- profiles/health/mcap.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/profiles/health/mcap.c b/profiles/health/mcap.c
-index b7e51d15cdb5..f43cb919aaba 100644
---- a/profiles/health/mcap.c
-+++ b/profiles/health/mcap.c
-@@ -389,7 +389,7 @@ int mcap_send_data(int sock, const void *buf, uint32_t size)
- 
- 	while (sent < size) {
- 		int n = write(sock, buf_b + sent, size - sent);
--		if (n < 0)
-+		if (n < 0 || n > SSIZE_MAX - sent)
- 			return -1;
- 		sent += n;
- 	}
--- 
-2.52.0
-
-
 From 45271ed3fd87d238836181b3534ddf3777f535e9 Mon Sep 17 00:00:00 2001
 From: Bastien Nocera <hadess@hadess.net>
 Date: Fri, 19 Jul 2024 11:26:45 +0200
